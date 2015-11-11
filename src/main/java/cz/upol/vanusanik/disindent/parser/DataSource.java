@@ -9,7 +9,14 @@ import java.io.InputStream;
  */
 public interface DataSource {
 	
+	/**
+	 * Returns InputStream containing din source code
+	 * @return din source code in InputStream
+	 */
 	public InputStream getData();
+	/**
+	 * @return file name of the din source code, should have .din extension
+	 */
 	public String	   getFilename();
 
 }

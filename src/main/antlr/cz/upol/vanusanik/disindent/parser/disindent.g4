@@ -79,8 +79,9 @@ tokens { INDENT, DEDENT }
 
 program:
 	(package_declaration NEWLINE)?
-	using_declaration *
-	(function | typedef)+
+	(using_declaration | NEWLINE)*
+	(function NEWLINE* | typedef NEWLINE*)+
+	EOF
 	;
 	
 package_declaration:
@@ -116,7 +117,7 @@ uses:
 	;
 	
 function:
-	header NEWLINE block
+	header block
 	;
 	
 header:
@@ -136,19 +137,21 @@ parameter:
 	;
 	
 block:
-	INDENT operation* DEDENT
+	INDENT operation+ DEDENT
 	;
 		
 operation:
-	(identifier simple_arguments) | (identifier INDENT arguments DEDENT)
+	  (identifier '(' simple_arguments? ')' NEWLINE) 
+	| (identifier NEWLINE INDENT arguments DEDENT) 
+	| atom NEWLINE
 	;
 	
 simple_arguments:
-	atom*
+	(atom ',')* atom
 	;
 	
 arguments:
-	block | atom
+	operation*
 	;
 	
 atom:
@@ -163,7 +166,7 @@ cast:
 	;
 	
 accessor:
-	fqName ('[]')?
+	fqName
 	;
 	
 constList:
@@ -222,7 +225,7 @@ typedef:
 	;
 	
 typedef_header:
-	'define' identifier ('with' template_parameters)?
+	'define' identifier ('with' template_parameters)? NEWLINE
 	;
 	
 template_parameters:
@@ -238,7 +241,7 @@ field_declaration:
 	;
 	
 fqName:
-	(identifier '.')+ identifier
+	(identifier '.')* identifier
 	;
 	
 identifier:

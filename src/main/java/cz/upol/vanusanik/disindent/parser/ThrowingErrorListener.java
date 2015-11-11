@@ -5,6 +5,11 @@ import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 
+/**
+ * Throws the exception within antrl instead of continuing with parsing
+ * @author Peter Vanusanik
+ *
+ */
 public class ThrowingErrorListener extends BaseErrorListener {
 	private String source;
 

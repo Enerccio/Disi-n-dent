@@ -1,6 +1,12 @@
 
-define Test
+define test
 	foo as int
 	bar as float
 	baz as string[]
 	qux as any
+	
+int anca(mara is int, jozef is string)
+    somefunc 
+        someotherfunc(mara, jozef)
+        somethingelse()
+        jozef 
