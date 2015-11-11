@@ -1,0 +1,6 @@
+
+define Test
+	foo as int
+	bar as float
+	baz as string[]
+	qux as any
