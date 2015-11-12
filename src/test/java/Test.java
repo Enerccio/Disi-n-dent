@@ -1,10 +1,12 @@
-import cz.upol.vanusanik.disindent.runtime.DisindentClassLoader;
+import cz.upol.vanusanik.disindent.DisindentThread;
+import cz.upol.vanusanik.disindent.buildpath.BuildPath;
 
 public class Test {
 
 	public static void main(String[] args) throws Exception{
+		DisindentThread.simpleStart("bin/");
 		
-		ClassLoader cl = new DisindentClassLoader(Test.class.getClassLoader());
+		ClassLoader cl = BuildPath.getBuildPath().getClassLoader();
 		
 		Class<?> newClass = cl.loadClass("test");
 		Object o = newClass.newInstance();

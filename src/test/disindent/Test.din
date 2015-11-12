@@ -1,3 +1,14 @@
+use anca.Mara
+use anca.Mara.jozef
+use anca.Mara.foo
+use Anca
+use Anca.baz
+from Anca use kaz, vaz
+from mara.Anca use
+	foo, baz
+	bar
+from Jano use 
+	koo1, koo2
 
 define test
 	foo as int

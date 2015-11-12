@@ -125,12 +125,12 @@ public class ParserBuilder {
 			ANTLRInputStream is = new ANTLRInputStream(inputSource.is);
 			disindentLexer lexer = new disindentLexer(is);
 			lexer.removeErrorListeners();
-			lexer.addErrorListener(new ThrowingErrorListener(is.name));
+			lexer.addErrorListener(new ThrowingErrorListener(inputSource.filename));
 			CommonTokenStream stream = new CommonTokenStream(lexer);
 			disindentParser parser = new disindentParser(stream);
 
 			parser.removeErrorListeners();
-			parser.addErrorListener(new ThrowingErrorListener(is.name));
+			parser.addErrorListener(new ThrowingErrorListener(inputSource.filename));
 			return parser;
 		} catch (IOException e) {
 			throw new DisindentRuntimeFailure(e);

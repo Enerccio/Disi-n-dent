@@ -1,5 +1,11 @@
 package cz.upol.vanusanik.disindent.utils;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
+
+import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -8,6 +14,10 @@ import org.apache.commons.lang3.StringUtils;
  *
  */
 public class Utils {
+
+	public static final CharSequence[] ASCII_LOWERCASE_LIST = new CharSequence[]{
+		"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x","y","z",
+	};
 
 	/**
 	 * Combines class name and package name in correct way
@@ -46,4 +56,75 @@ public class Utils {
 		return StringUtils.replace(slashName, "/", ".");
 	}
 
+	/**
+	 * Converts typedef into java class name
+	 * @param typedef
+	 * @return java class name
+	 */
+	public static String asTypedefJavaName(String typedef) {
+		return "dniTypedef" + StringUtils.capitalize(typedef);
+	}
+
+	/**
+	 * Converts moduledef into java class name
+	 * @param moduledef
+	 * @return java class name
+	 */
+	public static String asModuledefJavaName(String moduledef) {
+		return "dniModuledef" + StringUtils.capitalize(moduledef);
+	}
+	
+	/**
+	 * Splits path by the last dot. "foo.bar.baz" => "foo.bar", "baz"
+	 * @param path
+	 * @return
+	 */
+	public static String[] splitByLastDot(String path){
+		String[] res = new String[]{"", path};
+		
+		if (path.contains(".")){
+			res[0] = path.substring(0, path.lastIndexOf("."));
+			res[1] = path.substring(path.lastIndexOf(".")+1);
+		}
+		
+		return res;
+	}
+
+	/**
+	 * Shallow search in parse tree for specified elements
+	 * @param clazz
+	 * @param tree
+	 * @return
+	 */
+	public static <T extends ParseTree> List<T> searchForElementOfType(
+			Class<T> clazz, ParseTree tree) {
+		return searchForElement(clazz, tree, false);
+	}
+
+	/**
+	 * Deep or shallow search for specified elements in parser tree
+	 * @param clazz
+	 * @param tree 
+	 * @param deep whether it is deep or shallow search
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	private static <T extends ParseTree> List<T> searchForElement(Class<T> clazz,
+			ParseTree tree, boolean deep) {
+		List<T> results = new ArrayList<T>();
+		Queue<ParseTree> pq = new LinkedList<ParseTree>();
+		pq.add(tree);
+		
+		while ((tree = pq.poll()) != null){
+			if (clazz.isInstance(tree)){
+				results.add((T)tree);
+				if (!deep)
+					continue;
+			}
+			for (int i=0; i<tree.getChildCount(); i++)
+				pq.add(tree.getChild(i));
+		}
+		
+		return results;
+	}
 }

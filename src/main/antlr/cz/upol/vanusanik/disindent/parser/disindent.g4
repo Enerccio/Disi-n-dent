@@ -98,27 +98,43 @@ using_declaration:
 	;
 	
 using_module:
-	'use' fqName NEWLINE
+	'use' fqNameImport NEWLINE
+	;
+	
+fqModuleName:
+	(identifier '.')* module_identifier
+	;
+	
+fqNoModule:
+	fqModuleName '.' identifier
+	;
+	
+fqNameImport:
+	fqModuleName | fqNoModule 
+	;
+	
+fqName:
+	fqNoModule | identifier
 	;
 	
 using_functions:
-	singleline_using | multiline_using
+	multiline_using | singleline_using 
 	;
 	
 singleline_using:
-	'from' fqName 'use' uses
+	'from' fqModuleName 'use' uses 
 	; 
 	
 multiline_using:
-	'from' fqName 'use' multiline_uses
+	'from' fqModuleName 'use' multiline_uses
 	;
 	
 multiline_uses:
-	uses INDENT uses* DEDENT
+	NEWLINE INDENT uses+ DEDENT
 	;
 
 uses:
-	identifier* NEWLINE
+	(identifier ',')* identifier NEWLINE
 	;
 	
 nativeImport:
@@ -211,7 +227,8 @@ assignment:
 	;
 	
 type:
-	  'int' ('[]')?
+	   'bool' ('[]')?
+	|  'int' ('[]')?
 	| 'long' ('[]')?
 	| 'double' ('[]')?
 	| 'float' ('[]')?
@@ -250,8 +267,8 @@ field_declaration:
 	identifier 'as' (type | template_type) ('with' atom)? NEWLINE
 	;
 	
-fqName:
-	(identifier '.')* identifier
+module_identifier:
+	MODULE_IDENTIFIER
 	;
 	
 identifier:
@@ -282,9 +299,13 @@ fragment EscapeSequence:
 fragment SimpleEscapeSequence:   
 	'\\' ['nrt\\]
     ;
+    
+MODULE_IDENTIFIER
+: [A-Z] ([a-z] | [0-9] | '_' | [A-Z])*
+;
 
 IDENTIFIER
- : [a-z] ([a-z] | [0-9] | '_')*
+ : [a-z] ([a-z] | [0-9] | '_' | [A-Z])*
  ;
 
 TEMPLATE_TYPE
