@@ -80,7 +80,7 @@ tokens { INDENT, DEDENT }
 program:
 	(package_declaration NEWLINE)?
 	(using_declaration | NEWLINE)*
-	(function NEWLINE* | typedef NEWLINE* | native NEWLINE*)+
+	(function NEWLINE* | typedef NEWLINE* | nativeImport NEWLINE*)+
 	EOF
 	;
 	
