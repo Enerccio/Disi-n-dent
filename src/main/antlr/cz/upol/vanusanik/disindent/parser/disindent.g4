@@ -208,6 +208,7 @@ type:
 	| 'float' ('[]')?
 	| 'string' ('[]')?
 	| 'any' ('[]')?
+	| 'function' ('[]')?
 	| fqName template?
 	| template_type ('[]')?
 	;
