@@ -45,7 +45,7 @@ public class DisindentClassLoader extends ClassLoader {
 		DataSource ds = bp.getClassSource(name);
 		
 		if (ds == null) // class not found
-			throw new ClassNotFoundException("Disindent class not found " + name);
+			throw new ClassNotFoundException("Disindent class '" + name + "' not found ");
 		
 		ParserBuilder bd = new ParserBuilder();
 		bd.setDataSource(ds);

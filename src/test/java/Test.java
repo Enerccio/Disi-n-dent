@@ -1,5 +1,6 @@
 import cz.upol.vanusanik.disindent.DisindentThread;
 import cz.upol.vanusanik.disindent.buildpath.BuildPath;
+import cz.upol.vanusanik.disindent.utils.Utils;
 
 public class Test {
 
@@ -8,7 +9,7 @@ public class Test {
 		
 		ClassLoader cl = BuildPath.getBuildPath().getClassLoader();
 		
-		Class<?> newClass = cl.loadClass("test");
+		Class<?> newClass = cl.loadClass(Utils.asModuledefJavaName("Test"));
 		Object o = newClass.newInstance();
 		System.out.println(o);
 	}

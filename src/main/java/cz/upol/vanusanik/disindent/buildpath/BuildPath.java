@@ -156,7 +156,7 @@ public class BuildPath implements Serializable {
 		ProgramContext pc = p.program();
 		String packagePath = "";
 		
-		if (p.package_declaration() != null)
+		if (pc.package_declaration() != null)
 			packagePath = pc.package_declaration().fqName().getText();
 		
 		Map<String, String> imports = parseImports(pc);
@@ -168,11 +168,12 @@ public class BuildPath implements Serializable {
 		ae.source = source;
 		ae.sourceName = fname;
 		ae.elementName = Utils.asModuledefJavaName(name);
+		ae.slashPackage = slashPath;
 		
 		loadTypedefs(ae, pc, imports);
 		loadFunctions(ae, pc, imports);
 		
-		availableElements.put(slashPath + "/" + name, ae);
+		availableElements.put(slashPath.equals("") ? ae.elementName : slashPath + "/" + ae.elementName, ae);
 	}
 
 	/**
@@ -222,7 +223,7 @@ public class BuildPath implements Serializable {
 			
 			loadTypedef(te, tc);
 			
-			availableElements.put(ae.slashPackage + "/" + te.elementName, ae);
+			availableElements.put(ae.slashPackage.equals("") ? te.elementName : ae.slashPackage + "/" + te.elementName, ae);
 		}
 	}
 
