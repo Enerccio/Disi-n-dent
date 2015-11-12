@@ -79,6 +79,7 @@ tokens { INDENT, DEDENT }
 
 program:
 	(package_declaration NEWLINE)?
+	(native_declaration NEWLINE)?
 	(using_declaration | NEWLINE)*
 	(function NEWLINE* | typedef NEWLINE* | nativeImport NEWLINE*)+
 	EOF
@@ -86,6 +87,10 @@ program:
 	
 package_declaration:
 	'in' fqName
+	;
+	
+native_declaration:
+	'native package ' fqName
 	;
 
 using_declaration:
