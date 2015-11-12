@@ -279,7 +279,7 @@ fragment SimpleEscapeSequence:
     ;
 
 IDENTIFIER
- : ([a-z] | '_') ([a-z] | [0-9] | '_')*
+ : [a-z] ([a-z] | [0-9] | '_')*
  ;
 
 TEMPLATE_TYPE

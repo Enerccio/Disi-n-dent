@@ -17,6 +17,8 @@ public class Warner {
 		SILENT, 
 		/** Warning is logged to stderr */
 		WARN, 
+		/** Warning is logged to srderr with full stacktrace */
+		WARN_VERBOSE,
 		/** Warning is thrown */
 		ERROR
 	}
@@ -56,13 +58,15 @@ public class Warner {
 	 * @param e exception to use as warning
 	 */
 	public static void warn(Exception e) throws Exception {
-		if (warnLevel == WarnLevel.SILENT)
-			return;
-		
-		if (warnLevel == WarnLevel.WARN){
+		if (warnLevel == WarnLevel.WARN || warnLevel == WarnLevel.WARN_VERBOSE){
 			System.err.println(e.getClass().getName() + ": " + e.getMessage());
-			return;
 		}
+		
+		if (warnLevel == WarnLevel.WARN_VERBOSE)
+			e.printStackTrace(System.err);
+		
+		if (warnLevel != WarnLevel.ERROR)
+			return;
 		
 		throw e;
 	}
