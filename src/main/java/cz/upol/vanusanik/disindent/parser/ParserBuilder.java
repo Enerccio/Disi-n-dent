@@ -23,30 +23,6 @@ import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser;
  */
 public class ParserBuilder {
 	/**
-	 * Simple data source holding filename and input stream
-	 * @author Enerccio
-	 *
-	 */
-	private static class SimpleDataSource implements DataSource { 
-
-		/** data input stream */
-		private InputStream is;
-		/** source filename */
-		private String filename;
-		
-		@Override
-		public InputStream getData() {
-			return is;
-		}
-
-		@Override
-		public String getFilename() {
-			return filename;
-		}
-		
-	}
-	
-	/**
 	 * Currently built data source
 	 */
 	private SimpleDataSource inputSource;

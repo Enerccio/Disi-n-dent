@@ -37,22 +37,18 @@ public class DisindentCompiler implements Opcodes {
 		this.moduleName = FilenameUtils.getBaseName(filename);
 		this.cl = loader;
 	}
-
-	/** Holds compilation results, since one module can contain many classes */
-	private CompilationResult result;
 	
+	/** Package name of this module */
+	private String packageName = "";
+
 	/**
 	 * Commence the compilation of the loaded module. Will return classes created in this module via CompilationResult
 	 * @return all java classes compiled from this module
 	 * @throws CompilationException if anything goes wrong
 	 */
-	public CompilationResult compile() throws CompilationException {
+	public void compile() throws CompilationException {
 		try {
-			result = new CompilationResult();
-			
 			compileModule();
-			
-			return result;
 		} catch (CompilationException e){
 			throw e;
 		} catch (Throwable t){
@@ -66,8 +62,8 @@ public class DisindentCompiler implements Opcodes {
 	private void compileModule() {
 		byte[] moduleByteData = doCompileModule();
 		
-		cl.addClass(moduleByteData, moduleName, result.packageName);
-		result.compiledClasses.put(moduleName, cl.findClass(Utils.fullNameForClass(moduleName, result.packageName)));
+		cl.addClass(Utils.slashify(Utils.fullNameForClass(moduleName, packageName)), 
+				moduleByteData);
 	}
 
 	/**
@@ -78,7 +74,7 @@ public class DisindentCompiler implements Opcodes {
 		
 		ProgramContext pc = parser.program();
 		if (pc.package_declaration() != null){
-			result.packageName = pc.package_declaration().fqName().getText();
+			packageName = pc.package_declaration().fqName().getText();
 		}
 		
 		if (pc.package_declaration() != null){
