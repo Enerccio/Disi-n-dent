@@ -80,7 +80,7 @@ tokens { INDENT, DEDENT }
 program:
 	(package_declaration NEWLINE)?
 	(using_declaration | NEWLINE)*
-	(function NEWLINE* | typedef NEWLINE*)+
+	(function NEWLINE* | typedef NEWLINE* | native NEWLINE*)+
 	EOF
 	;
 	
@@ -114,6 +114,10 @@ multiline_uses:
 
 uses:
 	identifier* NEWLINE
+	;
+	
+nativeImport:
+	type 'native' identifier func_arguments NEWLINE
 	;
 	
 function:
