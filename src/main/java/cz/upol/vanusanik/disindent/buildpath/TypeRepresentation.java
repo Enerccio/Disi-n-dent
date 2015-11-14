@@ -47,7 +47,7 @@ public class TypeRepresentation implements Serializable {
 	public static final TypeRepresentation FUNCTION = new TypeRepresentation(SystemTypes.FUNCTION);
 	public static final TypeRepresentation ANY = new TypeRepresentation(SystemTypes.ANY);
 	
-	private static Map<String, TypeRepresentation> simpleTypeMap
+	static Map<String, TypeRepresentation> simpleTypeMap
 		= new HashMap<String, TypeRepresentation>();
 	
 	static {
@@ -80,6 +80,49 @@ public class TypeRepresentation implements Serializable {
 		this.type = type;
 	}
 	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((fqTypeName == null) ? 0 : fqTypeName.hashCode());
+		result = prime * result
+				+ ((generics == null) ? 0 : generics.hashCode());
+		result = prime * result
+				+ ((simpleType == null) ? 0 : simpleType.hashCode());
+		result = prime * result + ((type == null) ? 0 : type.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		TypeRepresentation other = (TypeRepresentation) obj;
+		if (fqTypeName == null) {
+			if (other.fqTypeName != null)
+				return false;
+		} else if (!fqTypeName.equals(other.fqTypeName))
+			return false;
+		if (generics == null) {
+			if (other.generics != null)
+				return false;
+		} else if (!generics.equals(other.generics))
+			return false;
+		if (simpleType == null) {
+			if (other.simpleType != null)
+				return false;
+		} else if (!simpleType.equals(other.simpleType))
+			return false;
+		if (type != other.type)
+			return false;
+		return true;
+	}
+
 	/**
 	 * @return simple type representation or null if it is not a complex type
 	 */
@@ -114,21 +157,10 @@ public class TypeRepresentation implements Serializable {
 	}
 	
 	/**
-	 * @return whether this type is generic specifier
-	 */
-	public boolean isGenericSpecifier(){
-		return fqTypeName != null && StringUtils.isAllUpperCase(fqTypeName);
-	}
-	
-	/**
 	 * Returns java type specifier as per jvm specs
 	 * @return jvm version
 	 */
 	public String toJavaTypeString(){
-		if (isGenericSpecifier()){
-			return fqTypeName;
-		}
-		
 		if (isCustomType()){
 			String[] components = StringUtils.split(fqTypeName, ".");
 			String typename = components[components.length-1];

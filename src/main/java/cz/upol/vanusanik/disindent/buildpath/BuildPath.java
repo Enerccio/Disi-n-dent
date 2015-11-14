@@ -3,6 +3,7 @@ package cz.upol.vanusanik.disindent.buildpath;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -13,11 +14,12 @@ import java.util.TreeMap;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Field_declarationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqModuleNameContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Func_argumentsContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FunctionContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.IdentifierContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ListContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.NativeImportContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ProgramContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Template_parametersContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Template_typeContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypeContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypedefContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypepartContext;
@@ -25,6 +27,7 @@ import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.UsesContext
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Using_declarationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Using_functionsContext;
 
+import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -32,8 +35,6 @@ import org.apache.commons.lang3.StringUtils;
 import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation.SystemTypes;
 import cz.upol.vanusanik.disindent.errors.BuildPathException;
 import cz.upol.vanusanik.disindent.errors.BuildPathModuleNameIncorrectException;
-import cz.upol.vanusanik.disindent.errors.CompilationException;
-import cz.upol.vanusanik.disindent.errors.ModuleDefinitionError;
 import cz.upol.vanusanik.disindent.parser.DataSource;
 import cz.upol.vanusanik.disindent.parser.ParserBuilder;
 import cz.upol.vanusanik.disindent.parser.SimpleDataSource;
@@ -87,7 +88,7 @@ public class BuildPath implements Serializable {
 	private DisindentClassLoader dcl = new DisindentClassLoader(Runtime.class.getClassLoader());
 	private Map<String, AvailableElement> availableElements = new TreeMap<String, AvailableElement>();
 	Map<String, AvailableElement> bpElements = new TreeMap<String, AvailableElement>();
-	private Set<Validator> validatorSet = new HashSet<Validator>();
+	private transient Set<Validator> validatorSet = new HashSet<Validator>();
 	
 	/**
 	 * @return class loader for this thread
@@ -256,19 +257,6 @@ public class BuildPath implements Serializable {
 	 * @param imports list of imports
 	 */
 	private void loadTypedef(AvailableElement te, TypedefContext tc, Map<String, String> imports) {
-		Set<String> generics = new HashSet<String>();
-		
-		if (tc.typedef_header().template_parameters() != null){
-			Template_parametersContext tpc = tc.typedef_header().template_parameters();
-			for (Template_typeContext ttc : tpc.template_type()){
-				String templateName = ttc.getText();
-				if (generics.contains(templateName))
-					throw new ModuleDefinitionError("typename contains multiple generics with same identifier");
-				generics.add(templateName);
-				te.genericSignature.addGeneric(templateName);
-			}
-		}
-		
 		for (Field_declarationContext fc : tc.typedef_body().field_declaration()){
 			String fieldName = fc.identifier().getText();
 			TypeContext typec = fc.type();
@@ -280,7 +268,7 @@ public class BuildPath implements Serializable {
 			else
 				tt = typepc.getText();
 			
-			TypeRepresentation type = asType(tt, typec, imports, generics, te.module);
+			TypeRepresentation type = asType(tt, typec, imports, te.module);
 			
 			te.fieldSignatures.addField(fieldName, type);
 		}
@@ -295,38 +283,19 @@ public class BuildPath implements Serializable {
 	 * @return
 	 */
 	private TypeRepresentation asType(String tt, TypeContext fc, 
-			Map<String, String> imports, Set<String> generics, AvailableElement mae) {
+			Map<String, String> imports, AvailableElement mae) {
 		TypeRepresentation tr = null;
 		
-		if (generics.contains(tt)){
+		tr = TypeRepresentation.asSimpleType(tt);
+		if (tr == null){
+			String fqPath = imports.get(tt);
+			if (fqPath == null)
+				fqPath = tt;
+			
 			tr = new TypeRepresentation();
 			tr.setType(SystemTypes.CUSTOM);
-			tr.setFqTypeName(tt);
-		} else {
-			tr = TypeRepresentation.asSimpleType(tt);
-			if (tr == null){
-				String fqPath = imports.get(tt);
-				if (fqPath == null)
-					fqPath = tt;
-				
-				tr = new TypeRepresentation();
-				tr.setType(SystemTypes.CUSTOM);
-				tr.setFqTypeName(fqPath);
-				if (fc.typepart().template() != null){
-					for (TypeContext t : fc.typepart().template().types().type()){
-						TypepartContext typepc = t.typepart();
-						
-						String ntt;
-						if (typepc.fqName() != null)
-							ntt = typepc.fqName().getText();
-						else
-							ntt = typepc.getText();
-						
-						tr.addGenerics(asType(ntt, t, imports, generics, mae));
-					}
-				}
-				validatorSet.add(new GenericsValidator(mae, tr));
-			}
+			tr.setFqTypeName(fqPath);
+			validatorSet.add(new TypeValidator(mae, tr));
 		}
 		
 		for (@SuppressWarnings("unused") ListContext lc : fc.list()){
@@ -346,8 +315,49 @@ public class BuildPath implements Serializable {
 	 * @param imports 
 	 */
 	private void loadFunctions(AvailableElement ae, ProgramContext pc, Map<String, String> imports) {
-		// TODO Auto-generated method stub
+		for (FunctionContext fc : pc.function()){
+			loadFunctionOrNative(fc, ae, imports);
+		}
+		for (NativeImportContext nic : pc.nativeImport()){
+			loadFunctionOrNative(nic, ae, imports);
+		}
+	}
+
+	/**
+	 * Loads function or native to the module
+	 * @param p
+	 * @param ae
+	 * @param imports
+	 */
+	private void loadFunctionOrNative(ParseTree p,
+			AvailableElement ae, Map<String, String> imports) {		
+		TypeContext returnContext = Utils.searchForElementOfType(TypeContext.class, p).get(0);
+		IdentifierContext name = Utils.searchForElementOfType(IdentifierContext.class, p).get(0);
+		Func_argumentsContext args = Utils.searchForElementOfType(Func_argumentsContext.class, p).get(0);
 		
+		
+		String baseName = name.getText();
+		List<TypeContext> types = new ArrayList<TypeContext>();
+		
+		types.add(returnContext);
+		for (TypeContext t : Utils.searchForElementOfType(TypeContext.class, args)){
+			types.add(t);
+		}
+		
+		List<TypeRepresentation> trl = new ArrayList<TypeRepresentation>();
+		for (TypeContext t : types){
+			TypepartContext typepc = t.typepart();
+			
+			String tt;
+			if (typepc.fqName() != null)
+				tt = typepc.fqName().getText();
+			else
+				tt = typepc.getText();
+			
+			trl.add(asType(tt, t, imports, ae));
+		}
+		
+		ae.functionSignatures.addFunction(baseName, trl);
 	}
 
 	/**

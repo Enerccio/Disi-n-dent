@@ -90,7 +90,7 @@ package_declaration:
 	;
 	
 native_declaration:
-	'native package ' fqName
+	'native package' fqName
 	;
 
 using_declaration:
@@ -207,6 +207,8 @@ constArg:
 	| make
 	| clone
 	| 'none'
+	| 'true'
+	| 'false'
 	;
 	
 make:
@@ -246,16 +248,7 @@ typepart:
 	| 'string' 
 	| 'any' 
 	| 'function' 
-	| fqName template?
-	| template_type
-	;
-	
-template:
-	'<' types '>'
-	;
-	
-types:
-	(type ',')* type
+	| fqName
 	;
 	
 typedef:
@@ -263,12 +256,8 @@ typedef:
 	;
 	
 typedef_header:
-	'define' identifier ('with' template_parameters)? NEWLINE
+	'define' identifier NEWLINE
 	;
-	
-template_parameters:
-	(template_type ',')* template_type
-	; 
 	
 typedef_body:
 	INDENT field_declaration* DEDENT
@@ -279,15 +268,11 @@ field_declaration:
 	;
 	
 module_identifier:
-	MODULE_IDENTIFIER | TEMPLATE_TYPE
+	MODULE_IDENTIFIER
 	;
 	
 identifier:
 	IDENTIFIER
-	;
-	
-template_type:
-	TEMPLATE_TYPE
 	;
 	
 String:
@@ -310,10 +295,6 @@ fragment EscapeSequence:
 fragment SimpleEscapeSequence:   
 	'\\' ['nrt\\]
     ;
-
-TEMPLATE_TYPE
- : [A-Z] [A-Z]*
- ;
   
 MODULE_IDENTIFIER
 : [A-Z] ([a-z] | [0-9] | '_' | [A-Z])*

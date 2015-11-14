@@ -31,8 +31,6 @@ class AvailableElement implements Comparable<AvailableElement>, Serializable {
 	/** parent module, null for modules */
 	AvailableElement module;
 	
-	/** Generics stored here */
-	GenericSignature genericSignature = new GenericSignature();
 	/** Fields and their signatures stored here, empty for modules */
 	FieldSignatures fieldSignatures = new FieldSignatures();
 	/** Functions and their signatures stored here, empty for typedefs */

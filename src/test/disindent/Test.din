@@ -1,25 +1,29 @@
 use Mara.mara
-use es.me.ral.da.Anca.anca
+use es.me.ral.da.Anca.typee
 use Wat.wat
 
-define test with XXX, YYY
+define test
 	foo as int
 	bar as float
 	baz as string[]
 	qux as any[][]
-	aaa as XXX
-	bbb as YYY
-	ccc as mara<XXX>
-	cc as mara<int>
-	ddd as anca
-	edd as anca<XXX, YYY>[]
+	cc as mara
+	ddd as typee
 	
 define wat
 	x as wat
-	
 	
 int anca(mara is int, jozef is string)
     somefunc 
         someotherfunc(mara, jozef)
         somethingelse()
         jozef 
+
+typee native anca(anca is typee, jozef is string)
+
+int native anca(mara is int, jozef is string, foo is test)
+
+string native anca()
+
+wat anca(mat is wat)
+	aaa(mat)
