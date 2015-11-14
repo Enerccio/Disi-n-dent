@@ -1,6 +1,7 @@
 package cz.upol.vanusanik.disindent.compiler;
 
 import java.io.PrintWriter;
+import java.util.List;
 
 import org.apache.commons.io.FilenameUtils;
 import org.objectweb.asm.*;
@@ -10,10 +11,14 @@ import cz.upol.vanusanik.disindent.errors.CompilationException;
 import cz.upol.vanusanik.disindent.runtime.DisindentClassLoader;
 import cz.upol.vanusanik.disindent.utils.Utils;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqModuleNameContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FunctionContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Package_declarationContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.IdentifierContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ProgramContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypedefContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.UsesContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Using_declarationContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Using_functionsContext;
 
 /**
  * DisindentCompiler compiles disindent (din) files into java classes
@@ -30,6 +35,8 @@ public class DisindentCompiler implements Opcodes {
 	private String moduleName;
 	/** bound class loader */
 	private DisindentClassLoader cl;
+	/** imports are listed here */
+	private Imports imports = new Imports();
 	
 	public DisindentCompiler(String filename, disindentParser parser, DisindentClassLoader loader){
 		this.parser = parser;
@@ -62,7 +69,7 @@ public class DisindentCompiler implements Opcodes {
 	private void compileModule() {
 		byte[] moduleByteData = doCompileModule();
 		
-		cl.addClass(Utils.slashify(Utils.fullNameForClass(moduleName, packageName)), 
+		cl.addClass(Utils.slashify(Utils.fullNameForClass(Utils.asModuledefJavaName(moduleName), packageName)), 
 				moduleByteData);
 	}
 
@@ -77,8 +84,8 @@ public class DisindentCompiler implements Opcodes {
 			packageName = pc.package_declaration().fqName().getText();
 		}
 		
-		if (pc.package_declaration() != null){
-			resolvePackages(pc.package_declaration());
+		if (pc.using_declaration().size() != 0){
+			resolveImports(pc);
 		}
 		
 		for (TypedefContext tdc : pc.typedef()){
@@ -86,7 +93,7 @@ public class DisindentCompiler implements Opcodes {
 		}
 		
 		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-		cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, moduleName, null, "java/lang/Object", null);
+		cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, Utils.asModuledefJavaName(moduleName), null, "java/lang/Object", null);
         cw.visitSource(filename, null);
         
         MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
@@ -99,7 +106,8 @@ public class DisindentCompiler implements Opcodes {
         mv.visitInsn(RETURN);
         Label l1 = new Label();
         mv.visitLabel(l1);
-        mv.visitLocalVariable("this", Utils.asLName(moduleName), null, l0, l1, 0);        
+        mv.visitLocalVariable("this", Utils.asLName(moduleName), null, l0, l1, 0);      
+        mv.visitMaxs(0, 0);
         mv.visitEnd();
         
         for (FunctionContext fc : pc.function()){
@@ -108,18 +116,42 @@ public class DisindentCompiler implements Opcodes {
 		
 		cw.visitEnd();
 		
+		byte[] classData = cw.toByteArray();
+		
 		PrintWriter pw = new PrintWriter(System.out);
-	    CheckClassAdapter.verify(new ClassReader(cw.toByteArray()), true, pw);
+	    CheckClassAdapter.verify(new ClassReader(classData), true, pw);
 	    
-		return cw.toByteArray();
+		return classData;
 	}
 
 	/**
 	 * Resolves the identifier access to other functions/modules
 	 * @param pd
 	 */
-	private void resolvePackages(Package_declarationContext pd) {
+	private void resolveImports(ProgramContext pc) {
+		for (Using_declarationContext ud : pc.using_declaration()){
+			if (ud.using_module() != null){
+				String fqName = ud.using_module().fqNameImport().getText();
+				imports.addImport(fqName);
+			} else {
+				Using_functionsContext fc = ud.using_functions();
+				List<UsesContext> usesList = Utils.searchForElementOfType(UsesContext.class, fc);
+				FqModuleNameContext fmnc = Utils.searchForElementOfType(FqModuleNameContext.class, fc).iterator().next();
+				
+				String moduleName = fmnc.getText();
+				for (UsesContext usc : usesList){
+					for (IdentifierContext i : usc.identifier()){
+						imports.addImport(moduleName, i.getText());
+					}
+				}
+			}
+		}
 		
+		for (TypedefContext tc : pc.typedef()){
+			String typedefName = tc.typedef_header().identifier().getText();
+			String fqName = (packageName.equals("") ? moduleName : packageName + "." + moduleName) + "." + typedefName;
+			imports.addImport(fqName, typedefName);
+ 		}
 	}
 
 	/**

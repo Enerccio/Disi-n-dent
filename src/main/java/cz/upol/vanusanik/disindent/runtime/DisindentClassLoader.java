@@ -49,7 +49,7 @@ public class DisindentClassLoader extends ClassLoader {
 		
 		ParserBuilder bd = new ParserBuilder();
 		bd.setDataSource(ds);
-		new DisindentCompiler(ds.getFilename(), bd.build(), this);
+		new DisindentCompiler(ds.getFilename(), bd.build(), this).compile();
 		
 		return caches.get(name);
 	}

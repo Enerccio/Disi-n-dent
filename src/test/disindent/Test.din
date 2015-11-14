@@ -1,29 +1,4 @@
-use Mara.mara
-use es.me.ral.da.Anca.typee
-use Wat.wat
+use Test2.struct
 
-define test
-	foo as int
-	bar as float
-	baz as string[]
-	qux as any[][]
-	cc as mara
-	ddd as typee
-	
-define wat
-	x as wat
-	
-int anca(mara is int, jozef is string)
-    somefunc 
-        someotherfunc(mara, jozef)
-        somethingelse()
-        jozef 
-
-typee native anca(anca is typee, jozef is string)
-
-int native anca(mara is int, jozef is string, foo is test)
-
-string native anca()
-
-wat anca(mat is wat)
-	aaa(mat)
+int specops(s is struct)
+	+(s.a, s.b)

@@ -166,9 +166,13 @@ block:
 	;
 		
 operation:
-	  (identifier '(' simple_arguments? ')' NEWLINE) 
-	| (identifier NEWLINE INDENT arguments DEDENT) 
+	  ((identifier|mathop) '(' simple_arguments? ')' NEWLINE) 
+	| ((identifier|mathop) NEWLINE INDENT arguments DEDENT) 
 	| atom NEWLINE
+	;
+	
+mathop:
+	'+' | '-' | '*' | '/'
 	;
 	
 simple_arguments:
@@ -191,7 +195,11 @@ cast:
 	;
 	
 accessor:
-	fqName
+	dottedName
+	;
+	
+dottedName:
+	(identifier '.')* identifier
 	;
 	
 constList:

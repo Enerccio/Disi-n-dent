@@ -49,8 +49,8 @@ public class Imports implements Serializable {
 	 * @param typedef
 	 */
 	public void addTypedef(String packageDeclaration, String moduleName, String typedef){
-		String fqName = Utils.slashify(packageDeclaration) + "/" + Utils.asModuledefJavaName(moduleName) + "$" + Utils.asTypedefJavaName(typedef);
-		add(fqName, typedef, packageDeclaration + "." + moduleName + "." + typedef);
+		String fqName = (packageDeclaration.equals("") ? "" : Utils.slashify(packageDeclaration) + "/") + Utils.asModuledefJavaName(moduleName) + "$" + Utils.asTypedefJavaName(typedef);
+		add(fqName, typedef, (packageDeclaration.equals("") ? "" : packageDeclaration + ".") + moduleName + "." + typedef);
 	}
 	
 	/**
@@ -90,7 +90,7 @@ public class Imports implements Serializable {
 		if (StringUtils.isAllLowerCase(moduleName.subSequence(0, 1)))
 			throw new MalformedImportDeclarationException("package path does not end with a module declaration");
 		
-		String testTypedefName = Utils.slashify(packagePath) + "/" + Utils.asModuledefJavaName(moduleName) + "$" + Utils.asTypedefJavaName(object);
+		String testTypedefName = (packagePath.equals("") ? "" : Utils.slashify(packagePath) + "/") + Utils.asModuledefJavaName(moduleName) + "$" + Utils.asTypedefJavaName(object);
 		BuildPath bp = BuildPath.getBuildPath();
 		
 		if (bp.getClassSource(testTypedefName) == null){
