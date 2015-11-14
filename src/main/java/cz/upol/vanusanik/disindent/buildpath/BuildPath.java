@@ -4,15 +4,23 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Field_declarationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqModuleNameContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.IdentifierContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ListContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ProgramContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Template_parametersContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Template_typeContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypeContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypedefContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypepartContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.UsesContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Using_declarationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Using_functionsContext;
@@ -21,8 +29,11 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation.SystemTypes;
 import cz.upol.vanusanik.disindent.errors.BuildPathException;
 import cz.upol.vanusanik.disindent.errors.BuildPathModuleNameIncorrectException;
+import cz.upol.vanusanik.disindent.errors.CompilationException;
+import cz.upol.vanusanik.disindent.errors.ModuleDefinitionError;
 import cz.upol.vanusanik.disindent.parser.DataSource;
 import cz.upol.vanusanik.disindent.parser.ParserBuilder;
 import cz.upol.vanusanik.disindent.parser.SimpleDataSource;
@@ -74,8 +85,9 @@ public class BuildPath implements Serializable {
 	}
 	
 	private DisindentClassLoader dcl = new DisindentClassLoader(Runtime.class.getClassLoader());
-	private Map<String, AvailableElement> availableElements
-		= new TreeMap<String, AvailableElement>();
+	private Map<String, AvailableElement> availableElements = new TreeMap<String, AvailableElement>();
+	Map<String, AvailableElement> bpElements = new TreeMap<String, AvailableElement>();
+	private Set<Validator> validatorSet = new HashSet<Validator>();
 	
 	/**
 	 * @return class loader for this thread
@@ -159,7 +171,7 @@ public class BuildPath implements Serializable {
 		if (pc.package_declaration() != null)
 			packagePath = pc.package_declaration().fqName().getText();
 		
-		Map<String, String> imports = parseImports(pc);
+		Map<String, String> imports = parseImports(pc, name, packagePath);
 		
 		String slashPath = Utils.slashify(packagePath);
 		AvailableElement ae = new AvailableElement();
@@ -167,6 +179,7 @@ public class BuildPath implements Serializable {
 		ae.modulePackage = packagePath;
 		ae.source = source;
 		ae.sourceName = fname;
+		ae.elementDinName = name;
 		ae.elementName = Utils.asModuledefJavaName(name);
 		ae.slashPackage = slashPath;
 		
@@ -174,6 +187,7 @@ public class BuildPath implements Serializable {
 		loadFunctions(ae, pc, imports);
 		
 		availableElements.put(slashPath.equals("") ? ae.elementName : slashPath + "/" + ae.elementName, ae);
+		bpElements.put(packagePath.equals("") ? name : packagePath + "." + name, ae);
 	}
 
 	/**
@@ -181,7 +195,7 @@ public class BuildPath implements Serializable {
 	 * @param pc
 	 * @return
 	 */
-	private Map<String, String> parseImports(ProgramContext pc) {
+	private Map<String, String> parseImports(ProgramContext pc, String selfModule, String selfPackage) {
 		Map<String, String> iMap = new HashMap<String, String>();
 		
 		for (Using_declarationContext ud : pc.using_declaration()){
@@ -201,8 +215,13 @@ public class BuildPath implements Serializable {
 					}
 				}
 			}
-			
 		}
+		
+		for (TypedefContext tc : pc.typedef()){
+			String typedefName = tc.typedef_header().identifier().getText();
+			String fqName = (selfPackage.equals("") ? selfModule : selfPackage + "." + selfModule) + "." + typedefName;
+			iMap.put(typedefName, fqName);
+ 		}
 		
 		return iMap;
 	}
@@ -216,19 +235,108 @@ public class BuildPath implements Serializable {
 	private void loadTypedefs(AvailableElement ae, ProgramContext pc, Map<String, String> imports) {
 		for (TypedefContext tc : pc.typedef()){
 			AvailableElement te = new AvailableElement();
-			te.elementName = ae.elementName + "$" + Utils.asTypedefJavaName(tc.typedef_header().identifier().getText());
+			te.elementDinName = tc.typedef_header().identifier().getText();
+			te.elementName = ae.elementName + "$" + Utils.asTypedefJavaName(te.elementDinName);
 			te.modulePackage = ae.modulePackage;
 			te.slashPackage = ae.slashPackage;
 			te.module = ae;
 			
-			loadTypedef(te, tc);
+			
+			loadTypedef(te, tc, imports);
 			
 			availableElements.put(ae.slashPackage.equals("") ? te.elementName : ae.slashPackage + "/" + te.elementName, ae);
+			bpElements.put((ae.modulePackage.equals("") ? ae.elementDinName : ae.modulePackage + "." + ae.elementDinName) + "." + te.elementDinName, te);
 		}
 	}
 
-	private void loadTypedef(AvailableElement te, TypedefContext tc) {
+	/**
+	 * Parses the typedef definiton and extracts the type informations
+	 * @param te typedef element
+	 * @param tc parsed typedef
+	 * @param imports list of imports
+	 */
+	private void loadTypedef(AvailableElement te, TypedefContext tc, Map<String, String> imports) {
+		Set<String> generics = new HashSet<String>();
 		
+		if (tc.typedef_header().template_parameters() != null){
+			Template_parametersContext tpc = tc.typedef_header().template_parameters();
+			for (Template_typeContext ttc : tpc.template_type()){
+				String templateName = ttc.getText();
+				if (generics.contains(templateName))
+					throw new ModuleDefinitionError("typename contains multiple generics with same identifier");
+				generics.add(templateName);
+				te.genericSignature.addGeneric(templateName);
+			}
+		}
+		
+		for (Field_declarationContext fc : tc.typedef_body().field_declaration()){
+			String fieldName = fc.identifier().getText();
+			TypeContext typec = fc.type();
+			TypepartContext typepc = typec.typepart();
+			
+			String tt;
+			if (typepc.fqName() != null)
+				tt = typepc.fqName().getText();
+			else
+				tt = typepc.getText();
+			
+			TypeRepresentation type = asType(tt, typec, imports, generics, te.module);
+			
+			te.fieldSignatures.addField(fieldName, type);
+		}
+	}
+
+	/**
+	 * Returns type as TypeRepresentation
+	 * @param tt
+	 * @param fc 
+	 * @param imports
+	 * @param generics
+	 * @return
+	 */
+	private TypeRepresentation asType(String tt, TypeContext fc, 
+			Map<String, String> imports, Set<String> generics, AvailableElement mae) {
+		TypeRepresentation tr = null;
+		
+		if (generics.contains(tt)){
+			tr = new TypeRepresentation();
+			tr.setType(SystemTypes.CUSTOM);
+			tr.setFqTypeName(tt);
+		} else {
+			tr = TypeRepresentation.asSimpleType(tt);
+			if (tr == null){
+				String fqPath = imports.get(tt);
+				if (fqPath == null)
+					fqPath = tt;
+				
+				tr = new TypeRepresentation();
+				tr.setType(SystemTypes.CUSTOM);
+				tr.setFqTypeName(fqPath);
+				if (fc.typepart().template() != null){
+					for (TypeContext t : fc.typepart().template().types().type()){
+						TypepartContext typepc = t.typepart();
+						
+						String ntt;
+						if (typepc.fqName() != null)
+							ntt = typepc.fqName().getText();
+						else
+							ntt = typepc.getText();
+						
+						tr.addGenerics(asType(ntt, t, imports, generics, mae));
+					}
+				}
+				validatorSet.add(new GenericsValidator(mae, tr));
+			}
+		}
+		
+		for (@SuppressWarnings("unused") ListContext lc : fc.list()){
+			TypeRepresentation oldr = tr;
+			tr = new TypeRepresentation();
+			tr.setType(SystemTypes.COMPLEX);
+			tr.setSimpleType(oldr);
+		}
+		
+		return tr;
 	}
 
 	/**
@@ -270,7 +378,8 @@ public class BuildPath implements Serializable {
 	 * Validates the build path and link all the unresolved imports.
 	 */
 	public void validate() {
-		// TODO
+		for (Validator v : validatorSet)
+			v.validate(this);
 	}
 
 }

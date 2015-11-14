@@ -206,6 +206,7 @@ constArg:
 	| String
 	| make
 	| clone
+	| 'none'
 	;
 	
 make:
@@ -227,16 +228,26 @@ assignment:
 	;
 	
 type:
-	   'bool' ('[]')?
-	|  'int' ('[]')?
-	| 'long' ('[]')?
-	| 'double' ('[]')?
-	| 'float' ('[]')?
-	| 'string' ('[]')?
-	| 'any' ('[]')?
-	| 'function' ('[]')?
+	typepart list*
+	;
+	
+list:
+	('[]')
+	;
+	
+typepart:
+	  'bool' 
+	| 'byte' 
+	| 'short' 
+	| 'int' 
+	| 'long' 
+	| 'double' 
+	| 'float' 
+	| 'string' 
+	| 'any' 
+	| 'function' 
 	| fqName template?
-	| template_type ('[]')?
+	| template_type
 	;
 	
 template:
@@ -264,11 +275,11 @@ typedef_body:
 	;
 	
 field_declaration:
-	identifier 'as' (type | template_type) ('with' atom)? NEWLINE
+	identifier 'as' type ('with' atom)? NEWLINE
 	;
 	
 module_identifier:
-	MODULE_IDENTIFIER
+	MODULE_IDENTIFIER | TEMPLATE_TYPE
 	;
 	
 identifier:
@@ -299,17 +310,17 @@ fragment EscapeSequence:
 fragment SimpleEscapeSequence:   
 	'\\' ['nrt\\]
     ;
-    
+
+TEMPLATE_TYPE
+ : [A-Z] [A-Z]*
+ ;
+  
 MODULE_IDENTIFIER
 : [A-Z] ([a-z] | [0-9] | '_' | [A-Z])*
 ;
 
 IDENTIFIER
  : [a-z] ([a-z] | [0-9] | '_' | [A-Z])*
- ;
-
-TEMPLATE_TYPE
- : ([A-Z] | '_') ([A-Z] | '_')*
  ;
 
 fragment Digit:

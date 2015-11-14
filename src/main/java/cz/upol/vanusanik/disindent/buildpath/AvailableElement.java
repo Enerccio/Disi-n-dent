@@ -23,6 +23,8 @@ class AvailableElement implements Comparable<AvailableElement>, Serializable {
 	String slashPackage;
 	/** element name in java */
 	String elementName;
+	/** element name in din*/
+	String elementDinName;
 	/** source code, null for typedefs */
 	byte[] source;
 	

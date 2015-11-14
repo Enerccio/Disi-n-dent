@@ -1,20 +1,22 @@
-use anca.Mara
-use anca.Mara.jozef
-use anca.Mara.foo
-use Anca
-use Anca.baz
-from Anca use kaz, vaz
-from mara.Anca use
-	foo, baz
-	bar
-from Jano use 
-	koo1, koo2
+use Mara.mara
+use es.me.ral.da.Anca.anca
+use Wat.wat
 
-define test
+define test with XXX, YYY
 	foo as int
 	bar as float
 	baz as string[]
-	qux as any
+	qux as any[][]
+	aaa as XXX
+	bbb as YYY
+	ccc as mara<XXX>
+	cc as mara<int>
+	ddd as anca
+	edd as anca<XXX, YYY>[]
+	
+define wat
+	x as wat
+	
 	
 int anca(mara is int, jozef is string)
     somefunc 

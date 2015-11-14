@@ -1,16 +1,31 @@
 package cz.upol.vanusanik.disindent.buildpath;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.commons.lang3.StringUtils;
+
+import cz.upol.vanusanik.disindent.utils.Utils;
 
 /**
  * Represents type for purpose of build path or compiler
  * @author Peter Vanusanik
  *
  */
-public class TypeRepresentation {
-	
+public class TypeRepresentation implements Serializable {
+	private static final long serialVersionUID = -7576057474510165453L;
+
+	/**
+	 * Represents system types enum
+	 * @author Peter Vanusanik
+	 *
+	 */
 	public enum SystemTypes {
-		BOOL, INT, FLOAT, LONG, DOUBLE, STRING, FUNCTION, COMPLEX, CUSTOM, ANY,
+		BOOL, BYTE, SHORT, INT, FLOAT, LONG, DOUBLE, 
+		STRING, FUNCTION, COMPLEX, CUSTOM, ANY, 
 	}
 	
 	public TypeRepresentation(){
@@ -22,6 +37,8 @@ public class TypeRepresentation {
 	}
 	
 	public static final TypeRepresentation BOOL = new TypeRepresentation(SystemTypes.BOOL);
+	public static final TypeRepresentation BYTE = new TypeRepresentation(SystemTypes.BYTE);
+	public static final TypeRepresentation SHORT = new TypeRepresentation(SystemTypes.SHORT);
 	public static final TypeRepresentation INT = new TypeRepresentation(SystemTypes.INT);
 	public static final TypeRepresentation LONG = new TypeRepresentation(SystemTypes.LONG);
 	public static final TypeRepresentation FLOAT = new TypeRepresentation(SystemTypes.FLOAT);
@@ -30,9 +47,30 @@ public class TypeRepresentation {
 	public static final TypeRepresentation FUNCTION = new TypeRepresentation(SystemTypes.FUNCTION);
 	public static final TypeRepresentation ANY = new TypeRepresentation(SystemTypes.ANY);
 	
+	private static Map<String, TypeRepresentation> simpleTypeMap
+		= new HashMap<String, TypeRepresentation>();
+	
+	static {
+		simpleTypeMap.put("bool", BOOL);
+		simpleTypeMap.put("byte", BYTE);
+		simpleTypeMap.put("short", SHORT);
+		simpleTypeMap.put("int", INT);
+		simpleTypeMap.put("long", LONG);
+		simpleTypeMap.put("float", FLOAT);
+		simpleTypeMap.put("double", DOUBLE);
+		simpleTypeMap.put("string", STRING);
+		simpleTypeMap.put("function", FUNCTION);
+		simpleTypeMap.put("any", ANY);
+	}
+	
+	/**Type enum*/
 	private SystemTypes type;
+	/** If it is complex type, ie array, type is stored here */
 	private TypeRepresentation simpleType;
+	/** FQ type name */
 	private String fqTypeName;
+	/** Represents generics if assigned to the type */
+	private List<TypeRepresentation> generics = new ArrayList<TypeRepresentation>();
 	
 	public SystemTypes getType() {
 		return type;
@@ -42,6 +80,9 @@ public class TypeRepresentation {
 		this.type = type;
 	}
 	
+	/**
+	 * @return simple type representation or null if it is not a complex type
+	 */
 	public TypeRepresentation getSimpleType() {
 		return simpleType;
 	}
@@ -58,15 +99,99 @@ public class TypeRepresentation {
 		this.fqTypeName = fqTypeName;
 	}
 	
+	/**
+	 * @return whether this type is complex type
+	 */
 	public boolean isComplexType(){
 		return simpleType != null;
 	}
 	
+	/**
+	 * @return whether this type is custom type 
+	 */
 	public boolean isCustomType(){
-		return fqTypeName != null && StringUtils.isAllLowerCase(fqTypeName.subSequence(0, 1));
+		return fqTypeName != null && (fqTypeName.contains(".") || !StringUtils.isAllLowerCase(fqTypeName.subSequence(0, 1)));
 	}
 	
+	/**
+	 * @return whether this type is generic specifier
+	 */
 	public boolean isGenericSpecifier(){
 		return fqTypeName != null && StringUtils.isAllUpperCase(fqTypeName);
+	}
+	
+	/**
+	 * Returns java type specifier as per jvm specs
+	 * @return jvm version
+	 */
+	public String toJavaTypeString(){
+		if (isGenericSpecifier()){
+			return fqTypeName;
+		}
+		
+		if (isCustomType()){
+			String[] components = StringUtils.split(fqTypeName, ".");
+			String typename = components[components.length-1];
+			String moduleName = components[components.length-2];
+			List<String> sl = new ArrayList<String>();
+			for (int i=0; i<components.length-2; i++){
+				sl.add(components[i]);
+			}
+			String pp = sl.size() == 0 ? "" : StringUtils.join(sl, "/");
+			return "L" + (pp.equals("") ? "" : pp + "/") + 
+					Utils.asModuledefJavaName(moduleName) + "$" + 
+					Utils.asTypedefJavaName(typename) + ";";
+		}
+		
+		if (isComplexType())
+			return "Lcz/upol/vanusanik/disindent/runtime/types/List;";
+		
+		switch (type){
+		case ANY:
+			return "Ljava/lang/Object;";
+		case BOOL:
+			return "Z";
+		case BYTE:
+			return "B";
+		case SHORT:
+			return "S";
+		case DOUBLE:
+			return "D";
+		case FLOAT:
+			return "F";
+		case FUNCTION:
+			return "Ljava/lang/reflect/Method;";
+		case INT:
+			return "I";
+		case LONG:
+			return "J";
+		default:
+		case STRING:
+			return "Ljava/lang/String;";
+		}
+	}
+
+	/**
+	 * Return simple type from name or null if not simple type
+	 * @param type
+	 * @return type representation or null
+	 */
+	public static TypeRepresentation asSimpleType(String type) {
+		return simpleTypeMap.get(type);
+	}
+	
+	/**
+	 * Adds generic parameter to the type
+	 * @param tr type representation
+	 */
+	public void addGenerics(TypeRepresentation tr){
+		generics.add(tr);
+	}
+	
+	/**
+	 * Returns all defined generic types
+	 */
+	public List<TypeRepresentation> getGenerics(){
+		return generics;
 	}
 }
