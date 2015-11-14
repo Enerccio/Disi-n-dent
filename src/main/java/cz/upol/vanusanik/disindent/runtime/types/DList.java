@@ -6,23 +6,23 @@ package cz.upol.vanusanik.disindent.runtime.types;
  *
  * @param <E> typeof list
  */
-public class List<E> {
+public class DList<E> {
 	/** head of the list, null if empty */
 	private E head;
 	/** rest of the list, null if empty */
-	private List<E> rest;
+	private DList<E> rest;
 	
-	public List(){
+	public DList(){
 		head = null;
 		rest = null;
 	}
 	
-	public List(E e){
+	public DList(E e){
 		head = e;
 		rest = null;
 	}
 	
-	public List(E e, List<E> rest){
+	public DList(E e, DList<E> rest){
 		head = e;
 		this.rest = rest;
 	}
@@ -33,10 +33,10 @@ public class List<E> {
 	 * @param l, maybe null
 	 * @return new list containing e
 	 */
-	public static <T> List<T> constList(T e, List<T> l){
+	public static <T> DList<T> constList(T e, DList<T> l){
 		if (l == null)
-			return new List<T>(e);
-		return new List<T>(e, l);
+			return new DList<T>(e);
+		return new DList<T>(e, l);
 	}
 	
 	/**
@@ -44,7 +44,7 @@ public class List<E> {
 	 * @param l list
 	 * @return head of the list
 	 */
-	public static <T> T car(List<T> l){
+	public static <T> T car(DList<T> l){
 		return l.head;
 	}
 	
@@ -53,7 +53,7 @@ public class List<E> {
 	 * @param l input list
 	 * @return rest or null if empty
 	 */
-	public static <T> List<T> cdr(List<T> l){
+	public static <T> DList<T> cdr(DList<T> l){
 		return l.rest;
 	}
 }

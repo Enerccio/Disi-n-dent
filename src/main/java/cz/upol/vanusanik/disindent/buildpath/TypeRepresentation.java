@@ -160,7 +160,7 @@ public class TypeRepresentation implements Serializable {
 	 * Returns java type specifier as per jvm specs
 	 * @return jvm version
 	 */
-	public String toJavaTypeString(){
+	public String toJVMTypeString(){
 		if (isCustomType()){
 			String[] components = StringUtils.split(fqTypeName, ".");
 			String typename = components[components.length-1];
@@ -176,7 +176,7 @@ public class TypeRepresentation implements Serializable {
 		}
 		
 		if (isComplexType())
-			return "Lcz/upol/vanusanik/disindent/runtime/types/List;";
+			return "Lcz/upol/vanusanik/disindent/runtime/types/DList;";
 		
 		switch (type){
 		case ANY:
@@ -225,5 +225,49 @@ public class TypeRepresentation implements Serializable {
 	 */
 	public List<TypeRepresentation> getGenerics(){
 		return generics;
+	}
+
+	/**
+	 * Returns external java type for this type
+	 * @return
+	 */
+	public String toJaveTypeString() {
+		if (isCustomType()){
+			return "Object";
+		}
+		
+		if (isComplexType()){
+			String stype = getSimpleType().toJaveTypeString();
+			if (stype.equals("int"))
+				stype = "integer";
+			if (stype.equals("bool"))
+				stype = "boolean";
+			stype = StringUtils.capitalize(stype);
+			return String.format("DList<%s>", stype);
+		}
+		
+		switch (type){
+		case ANY:
+			return "Object";
+		case BOOL:
+			return "boolean";
+		case BYTE:
+			return "byte";
+		case SHORT:
+			return "short";
+		case DOUBLE:
+			return "double";
+		case FLOAT:
+			return "float";
+		case FUNCTION:
+			return "Method";
+		case INT:
+			return "int";
+		case LONG:
+			return "long";
+		default:
+		case STRING:
+			return "String";
+		}
 	}
 }

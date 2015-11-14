@@ -81,7 +81,7 @@ public class DisindentCompiler implements Opcodes {
 		
 		ProgramContext pc = parser.program();
 		if (pc.package_declaration() != null){
-			packageName = pc.package_declaration().fqName().getText();
+			packageName = pc.package_declaration().javaName().getText();
 		}
 		
 		if (pc.using_declaration().size() != 0){

@@ -86,11 +86,15 @@ program:
 	;
 	
 package_declaration:
-	'in' fqName
+	'in' javaName
 	;
 	
 native_declaration:
-	'native package' fqName
+	'native package' javaName
+	;
+	
+javaName:
+	(identifier '.')* identifier
 	;
 
 using_declaration:

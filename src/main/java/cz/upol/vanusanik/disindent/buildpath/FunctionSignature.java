@@ -66,9 +66,9 @@ public class FunctionSignature implements Serializable {
 			throw new MethodAlreadyExistException();
 		
 		if (signSpec == null)
-			signSpec = tr.toJavaTypeString() + "(";
+			signSpec = tr.toJVMTypeString() + "(";
 		else
-			signSpec = signSpec + tr.toJavaTypeString();
+			signSpec = signSpec + tr.toJVMTypeString();
 		
 		if (!subsignatures.containsKey(tr))
 			subsignatures.put(tr, new FunctionSignature(name, signSpec, sublist));

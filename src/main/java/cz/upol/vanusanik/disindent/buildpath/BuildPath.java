@@ -170,7 +170,7 @@ public class BuildPath implements Serializable {
 		String packagePath = "";
 		
 		if (pc.package_declaration() != null)
-			packagePath = pc.package_declaration().fqName().getText();
+			packagePath = pc.package_declaration().javaName().getText();
 		
 		Map<String, String> imports = parseImports(pc, name, packagePath);
 		
@@ -276,10 +276,10 @@ public class BuildPath implements Serializable {
 
 	/**
 	 * Returns type as TypeRepresentation
-	 * @param tt
-	 * @param fc 
-	 * @param imports
-	 * @param generics
+	 * @param tt name of the type
+	 * @param fc type context
+	 * @param imports list of imports
+	 * @param mae module elemnt to be validated if type exists or not
 	 * @return
 	 */
 	private TypeRepresentation asType(String tt, TypeContext fc, 
