@@ -25,6 +25,7 @@ import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Assignments
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.AtomContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.BlockContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ConstArgContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Field_declarationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqModuleNameContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqNameContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FunctionContext;
@@ -231,7 +232,69 @@ public class DisindentCompiler implements Opcodes {
 	 * @param tdc
 	 */
 	private void compileNewType(TypedefContext tdc) {
+		String typedefName = tdc.typedef_header().identifier().getText();
+		String fqTypedefPath = (packageName.equals("") ? moduleName : packageName
+				+ "." + moduleName) + "." + Utils.asTypedefJavaName(typedefName);
+		String fqJavaPath = fqThisType + "$" + Utils.asTypedefJavaName(typedefName);
+		
+		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+		cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER,
+				fqJavaPath, null,
+				"java/lang/Object", null);
+		cw.visitSource(filename, null);
 
+		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null,
+				null);
+		mv.visitCode();
+		Label l0 = new Label();
+		mv.visitLabel(l0);
+		mv.visitLineNumber(0, l0);
+		mv.visitVarInsn(ALOAD, 0);
+		mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V",
+				false);
+		
+		fc = new cz.upol.vanusanik.disindent.compiler.FunctionContext(null);
+		fc.push();
+		TypeRepresentation thisType = new TypeRepresentation();
+		thisType.setFqTypeName(fqTypedefPath);
+		fc.addLocal("this", thisType);
+		
+		for (Field_declarationContext fdc : tdc.typedef_body().field_declaration()){
+			String fname = fdc.identifier().getText();
+			TypeRepresentation type = CompilerUtils.asType(fdc.type(), imports);
+			
+			FieldVisitor fv = cw.visitField(ACC_PUBLIC, fname, type.toJVMTypeString(), null, null);
+			fv.visitEnd();
+			
+			mv.visitVarInsn(ALOAD, 0);
+			if (fdc.atom() != null){
+				TypeRepresentation atomType = compileAtom(mv, fdc.atom(), true);
+				if (!CompilerUtils.congruentType(atomType, type))
+					throw new TypeException("wrong type at line " + fdc.start.getLine());
+			} else {
+				// default value
+				CompilerUtils.defaultValue(mv, type);
+			}
+			mv.visitFieldInsn(PUTFIELD, fqJavaPath, fname, type.toJVMTypeString());
+		}
+		
+		mv.visitInsn(RETURN);
+		fc.pop(mv, l0);
+		mv.visitMaxs(0, 0);
+		mv.visitEnd();
+		
+		cw.visitEnd();
+
+		byte[] classData = cw.toByteArray();
+
+		PrintWriter pw = new PrintWriter(System.out);
+		try {
+			CheckClassAdapter.verify(new ClassReader(classData), cl, true, pw);
+		} catch (Throwable t){
+			t.printStackTrace();
+		}
+		
+		cl.addClass(fqJavaPath,	classData);
 	}
 
 	/**
@@ -403,14 +466,14 @@ public class DisindentCompiler implements Opcodes {
 		if (atom.getText().equals("true")){
 			// true
 			// returns bool type
-			mv.visitLdcInsn(Boolean.TRUE);
+			mv.visitInsn(ICONST_1);
 			return TypeRepresentation.BOOL;
 		}
 		
 		if (atom.getText().equals("false")){
 			// false
 			// returns bool type
-			mv.visitLdcInsn(Boolean.FALSE);
+			mv.visitInsn(ICONST_0);
 			return TypeRepresentation.BOOL;
 		}
 		
@@ -531,9 +594,9 @@ public class DisindentCompiler implements Opcodes {
 				tr.setType(SystemTypes.CUSTOM);
 				tr.setFqTypeName(fqPath);
 				
-				mv.visitTypeInsn(NEW, Utils.slashify(tr.getFqTypeName()));
+				mv.visitTypeInsn(NEW, tr.getJavaClassName());
 				mv.visitInsn(DUP);
-				mv.visitMethodInsn(INVOKESPECIAL, Utils.slashify(tr.getFqTypeName()), "<init>", "()V", false);
+				mv.visitMethodInsn(INVOKESPECIAL, tr.getJavaClassName(), "<init>", "()V", false);
 				
 				FieldSignatures fs = BuildPath.getBuildPath().getFieldSignatures(tr.getFqTypeName());
 				
@@ -546,8 +609,8 @@ public class DisindentCompiler implements Opcodes {
 					for (String fname : fs.getFields()){
 						mv.visitInsn(DUP2);
 						TypeRepresentation varType = fs.getType(fname);
-						mv.visitFieldInsn(GETFIELD, Utils.slashify(tr.getFqTypeName()), fname, varType.toJVMTypeString());
-						mv.visitFieldInsn(PUTFIELD, Utils.slashify(tr.getFqTypeName()), fname, varType.toJVMTypeString());
+						mv.visitFieldInsn(GETFIELD, tr.getJavaClassName(), fname, varType.toJVMTypeString());
+						mv.visitFieldInsn(PUTFIELD, tr.getJavaClassName(), fname, varType.toJVMTypeString());
 					}
 					
 					mv.visitInsn(POP);
@@ -566,7 +629,7 @@ public class DisindentCompiler implements Opcodes {
 						TypeRepresentation actualType = compileAtom(mv, assign.atom(), true);
 						if (!CompilerUtils.congruentType(varType, actualType))
 							throw new TypeException("wrong type at line " + assign.start.getLine());
-						mv.visitFieldInsn(PUTFIELD, Utils.slashify(tr.getFqTypeName()), fname, varType.toJVMTypeString());
+						mv.visitFieldInsn(PUTFIELD, tr.getJavaClassName(), fname, varType.toJVMTypeString());
 					}
 				}
 				

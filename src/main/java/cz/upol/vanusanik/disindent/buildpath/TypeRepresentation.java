@@ -313,4 +313,13 @@ public class TypeRepresentation implements Serializable {
 			return "Ljava/lang/String;";
 		}
 	}
+
+	/**
+	 * Return slashify version of java class bound to this type, only works for custom type
+	 * @return
+	 */
+	public String getJavaClassName() {
+		String jvmString = toJVMTypeString();
+		return jvmString.substring(1, jvmString.length()-1);
+	}
 }

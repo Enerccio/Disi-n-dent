@@ -324,4 +324,45 @@ public class CompilerUtils implements Opcodes {
 		}
 		return test.equals(requiredType);
 	}
+
+	public static void defaultValue(MethodVisitor mv, TypeRepresentation type) {
+		if (type.isComplexType() || type.isCustomType()
+				|| type.getType() == SystemTypes.ANY
+				|| type.getType() == SystemTypes.FUNCTION
+				|| type.getType() == SystemTypes.STRING){
+			mv.visitInsn(ACONST_NULL);
+			return;
+		}
+		
+		switch (type.getType()){
+		case BOOL:
+			mv.visitInsn(ICONST_0);
+			break;
+		case BYTE:
+			mv.visitInsn(ICONST_0);
+			break;
+		case DOUBLE:
+			mv.visitInsn(DCONST_0);
+			break;
+		case FLOAT:
+			mv.visitInsn(FCONST_0);
+			break;
+		case INT:
+			mv.visitInsn(ICONST_0);
+			break;
+		case LONG:
+			mv.visitInsn(LCONST_0);
+			break;
+		case SHORT:
+			mv.visitInsn(ICONST_0);
+			break;
+		case ANY:
+		case COMPLEX:
+		case CUSTOM:
+		case FUNCTION:
+		case STRING:
+		default:
+			break;
+		}
+	}
 }

@@ -1,4 +1,4 @@
 use Test2.struct
 
-function[] foo(a is int)
-	function[&foo, &foo]
+struct foo(a is int)
+	make struct with (a is a, b is 'Hello, world!')
