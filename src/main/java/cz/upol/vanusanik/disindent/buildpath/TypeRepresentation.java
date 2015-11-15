@@ -199,7 +199,7 @@ public class TypeRepresentation implements Serializable {
 		case FLOAT:
 			return "F";
 		case FUNCTION:
-			return "Ljava/lang/reflect/Method;";
+			return "Lcz/upol/vanusanik/disindent/runtime/types/Method;";
 		case INT:
 			return "I";
 		case LONG:

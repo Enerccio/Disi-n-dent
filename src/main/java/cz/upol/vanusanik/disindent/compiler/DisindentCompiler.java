@@ -72,6 +72,8 @@ public class DisindentCompiler implements Opcodes {
 	private String nativePackage = "";
 	/** Function context for actively compiled function */
 	private cz.upol.vanusanik.disindent.compiler.FunctionContext fc;
+	/** */
+	private String fqThisType;
 
 	/**
 	 * Commence the compilation of the loaded module. Will return classes
@@ -113,6 +115,9 @@ public class DisindentCompiler implements Opcodes {
 		ProgramContext pc = parser.program();
 		if (pc.package_declaration() != null) {
 			packageName = pc.package_declaration().javaName().getText();
+			fqThisType = Utils.slashify(packageName) + "/" + Utils.asModuledefJavaName(moduleName);
+		} else {
+			fqThisType = Utils.asModuledefJavaName(moduleName);
 		}
 
 		if (pc.native_declaration() != null) {
@@ -129,7 +134,7 @@ public class DisindentCompiler implements Opcodes {
 
 		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
 		cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER,
-				Utils.asModuledefJavaName(moduleName), null,
+				fqThisType, null,
 				"java/lang/Object", null);
 		cw.visitSource(filename, null);
 
@@ -145,7 +150,7 @@ public class DisindentCompiler implements Opcodes {
 		mv.visitInsn(RETURN);
 		Label l1 = new Label();
 		mv.visitLabel(l1);
-		mv.visitLocalVariable("this", Utils.asLName(moduleName), null, l0, l1,
+		mv.visitLocalVariable("this", Utils.asLName(fqThisType), null, l0, l1,
 				0);
 		mv.visitMaxs(0, 0);
 		mv.visitEnd();
@@ -163,7 +168,11 @@ public class DisindentCompiler implements Opcodes {
 		byte[] classData = cw.toByteArray();
 
 		PrintWriter pw = new PrintWriter(System.out);
-		CheckClassAdapter.verify(new ClassReader(classData), cl, true, pw);
+		try {
+			CheckClassAdapter.verify(new ClassReader(classData), cl, true, pw);
+		} catch (Throwable t){
+			t.printStackTrace();
+		}
 
 		return classData;
 	}
@@ -558,6 +567,24 @@ public class DisindentCompiler implements Opcodes {
 				}
 				
 				return tr;
+			}
+			
+			if (c.funcptr() != null){
+				String fncName = c.funcptr().funcdesignator().getText();
+				String fqPath = imports.importMapOriginal.get(fncName);
+				if (fqPath == null)
+					throw new MalformedImportDeclarationException("function " + fncName
+							+ " is not defined");
+				String typeName = fqPath.substring(0, fqPath.lastIndexOf('.'));
+				String cp = BuildPath.getBuildPath().getClassPath(typeName);
+				
+				mv.visitLdcInsn(fncName);
+				mv.visitLdcInsn(Type.getType(Utils.asLName(fqThisType)));
+				mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Class", "getClassLoader", "()Ljava/lang/ClassLoader;", false);
+				mv.visitLdcInsn(cp);
+				mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/ClassLoader", "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;", false);
+				mv.visitMethodInsn(INVOKESTATIC, "cz/upol/vanusanik/disindent/runtime/types/Method", "makeFunction", "(Ljava/lang/String;Ljava/lang/Class;)Lcz/upol/vanusanik/disindent/runtime/types/Method;", false);
+				return TypeRepresentation.FUNCTION;
 			}
 		}
 		

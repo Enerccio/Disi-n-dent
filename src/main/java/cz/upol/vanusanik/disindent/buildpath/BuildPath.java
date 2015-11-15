@@ -408,4 +408,16 @@ public class BuildPath implements Serializable {
 		return null;
 	}
 
+	/**
+	 * Returns module as java class type
+	 * @param moduleName
+	 * @return
+	 */
+	public String getClassPath(String moduleName) {
+		AvailableElement ae = bpElements.get(moduleName);
+		if (ae != null)
+			return ae.slashPackage.equals("") ? ae.elementName : ae.slashPackage + "/" + ae.elementName;
+		return null;
+	}
+
 }

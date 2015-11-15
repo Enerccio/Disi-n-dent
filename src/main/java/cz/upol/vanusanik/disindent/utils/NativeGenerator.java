@@ -86,7 +86,7 @@ public class NativeGenerator {
 			bd.append(String.format("package %s;\n", nativePackage));
 		
 		bd.append("\n");
-		bd.append("import java.lang.reflect.Method;\n");
+		bd.append("import cz.upol.vanusanik.disindent.runtime.types.Method;\n");
 		bd.append("import cz.upol.vanusanik.disindent.runtime.types.DList;\n");
 		bd.append("\n");
 

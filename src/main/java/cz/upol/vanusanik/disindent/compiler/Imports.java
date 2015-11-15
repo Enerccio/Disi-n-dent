@@ -95,7 +95,7 @@ public class Imports implements Serializable {
 		
 		if (bp.getClassSource(testTypedefName) == null){
 			// it can only be function
-			addFuncdef(packagePath + "." + moduleName, object);
+			addFuncdef(packagePath.equals("") ? moduleName : packagePath + "." + moduleName, object);
 		} else {
 			// it is module
 			addTypedef(packagePath, moduleName, object);
