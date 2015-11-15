@@ -389,6 +389,10 @@ public class DisindentCompiler implements Opcodes {
 		if (!last)
 			return null; // atoms are ignored if not last
 		
+		Label opLabel = new Label();
+		mv.visitLabel(opLabel);
+		mv.visitLineNumber(atom.start.getLine(), opLabel);
+		
 		if (atom.getText().equals("none")){
 			// null
 			// returns null type
@@ -570,6 +574,7 @@ public class DisindentCompiler implements Opcodes {
 			}
 			
 			if (c.funcptr() != null){
+				// function pointer
 				String fncName = c.funcptr().funcdesignator().getText();
 				String fqPath = imports.importMapOriginal.get(fncName);
 				if (fqPath == null)
@@ -586,6 +591,31 @@ public class DisindentCompiler implements Opcodes {
 				mv.visitMethodInsn(INVOKESTATIC, "cz/upol/vanusanik/disindent/runtime/types/Method", "makeFunction", "(Ljava/lang/String;Ljava/lang/Class;)Lcz/upol/vanusanik/disindent/runtime/types/Method;", false);
 				return TypeRepresentation.FUNCTION;
 			}
+		}
+		
+		if (atom.constList() != null){
+			// list type
+			TypeRepresentation st = CompilerUtils.asType(atom.constList().type(), imports);
+			TypeRepresentation tr = new TypeRepresentation();
+			tr.setType(SystemTypes.COMPLEX);
+			tr.setSimpleType(st);
+			
+			if (atom.constList().atoms() != null){
+				for (AtomContext a : atom.constList().atoms().atom()){
+					TypeRepresentation atomType = compileAtom(mv, a, true);
+					if (!CompilerUtils.congruentType(atomType, st))
+						throw new TypeException("wrong type at line " + a.start.getLine());
+				}
+				
+				mv.visitInsn(ACONST_NULL);
+				
+				for (int i=0; i<atom.constList().atoms().atom().size(); i++){
+					mv.visitMethodInsn(INVOKESTATIC, "cz/upol/vanusanik/disindent/runtime/types/DList", "constList", 
+							"(Ljava/lang/Object;Lcz/upol/vanusanik/disindent/runtime/types/DList;)Lcz/upol/vanusanik/disindent/runtime/types/DList;", false);
+				}
+			}
+			
+			return tr;
 		}
 		
 		return null;

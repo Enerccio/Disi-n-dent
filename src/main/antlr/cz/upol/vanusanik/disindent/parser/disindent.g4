@@ -211,7 +211,11 @@ dottedName:
 	;
 	
 constList:
-	'[' constArg* ']'
+	type '[' atoms? ']'
+	;
+	
+atoms:
+	(atom ',')* atom
 	;
 	
 constArg:
