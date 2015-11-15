@@ -242,8 +242,8 @@ make:
 	;
 
 clone:
-	('clone' fqName 'with' '(' assignments ')') |
-	('clone' fqName 'with' INDENT (assignments NEWLINE)* DEDENT)
+	('clone' fqName '<' atom '>' 'with' '(' assignments ')') |
+	('clone' fqName '<' atom '>' 'with' INDENT (assignments NEWLINE)* DEDENT)
 	;
 	
 assignments:

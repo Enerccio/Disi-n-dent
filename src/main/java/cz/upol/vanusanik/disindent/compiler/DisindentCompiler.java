@@ -11,17 +11,22 @@ import org.objectweb.asm.util.CheckClassAdapter;
 import cz.upol.vanusanik.disindent.buildpath.BuildPath;
 import cz.upol.vanusanik.disindent.buildpath.FieldSignatures;
 import cz.upol.vanusanik.disindent.buildpath.FunctionSignature.SignatureSpecifier;
+import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation.SystemTypes;
 import cz.upol.vanusanik.disindent.buildpath.FunctionSignatures;
 import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation;
 import cz.upol.vanusanik.disindent.errors.CompilationException;
+import cz.upol.vanusanik.disindent.errors.MalformedImportDeclarationException;
 import cz.upol.vanusanik.disindent.errors.TypeException;
 import cz.upol.vanusanik.disindent.runtime.DisindentClassLoader;
 import cz.upol.vanusanik.disindent.utils.Utils;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.AssignmentContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.AssignmentsContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.AtomContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.BlockContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ConstArgContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqModuleNameContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqNameContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FunctionContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.HeaderContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.IdentifierContext;
@@ -489,11 +494,70 @@ public class DisindentCompiler implements Opcodes {
 			}
 			
 			if (c.String() != null){
+				// string
 				String strValue = c.getText();
 				strValue = Utils.removeEscapes(strValue);
 				strValue = strValue.substring(1, strValue.length()-1);
 				mv.visitLdcInsn(strValue);
 				return TypeRepresentation.STRING;
+			}
+			
+			if (c.make() != null || c.clone() != null){
+				// clone or assign
+				boolean clone = c.clone() != null;
+				List<AssignmentsContext> ac = clone ? c.clone().assignments() : c.make().assignments();
+				FqNameContext typeFQName = clone ? c.clone().fqName() : c.make().fqName();
+				
+				String tt = typeFQName.getText();
+				String fqPath = imports.importMapOriginal.get(tt);
+				if (fqPath == null)
+					throw new MalformedImportDeclarationException("type " + tt
+							+ " is not defined");
+
+				TypeRepresentation tr = new TypeRepresentation();
+				tr.setType(SystemTypes.CUSTOM);
+				tr.setFqTypeName(fqPath);
+				
+				mv.visitTypeInsn(NEW, Utils.slashify(tr.getFqTypeName()));
+				mv.visitInsn(DUP);
+				mv.visitMethodInsn(INVOKESPECIAL, Utils.slashify(tr.getFqTypeName()), "<init>", "()V", false);
+				
+				FieldSignatures fs = BuildPath.getBuildPath().getFieldSignatures(tr.getFqTypeName());
+				
+				// clone fields
+				if (clone){
+					TypeRepresentation cloneType = compileAtom(mv, c.clone().atom(), true);
+					if (!CompilerUtils.congruentType(tr, cloneType))
+						throw new TypeException("wrong type at line " + c.clone().start.getLine());
+					
+					for (String fname : fs.getFields()){
+						mv.visitInsn(DUP2);
+						TypeRepresentation varType = fs.getType(fname);
+						mv.visitFieldInsn(GETFIELD, Utils.slashify(tr.getFqTypeName()), fname, varType.toJVMTypeString());
+						mv.visitFieldInsn(PUTFIELD, Utils.slashify(tr.getFqTypeName()), fname, varType.toJVMTypeString());
+					}
+					
+					mv.visitInsn(POP);
+				}
+				
+				// assign fields
+				for (AssignmentsContext a : ac){
+					Label l0 = new Label();
+					mv.visitLabel(l0);
+					mv.visitLineNumber(a.start.getLine(), l0);
+					
+					for (AssignmentContext assign : a.assignment()){
+						mv.visitInsn(DUP);
+						String fname = assign.identifier().getText();
+						TypeRepresentation varType = fs.getType(fname);
+						TypeRepresentation actualType = compileAtom(mv, assign.atom(), true);
+						if (!CompilerUtils.congruentType(varType, actualType))
+							throw new TypeException("wrong type at line " + assign.start.getLine());
+						mv.visitFieldInsn(PUTFIELD, Utils.slashify(tr.getFqTypeName()), fname, varType.toJVMTypeString());
+					}
+				}
+				
+				return tr;
 			}
 		}
 		

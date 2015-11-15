@@ -32,4 +32,12 @@ public class FieldSignatures implements Serializable {
 	public TypeRepresentation getType(String fieldName){
 		return fields.get(fieldName);
 	}
+
+	/**
+	 * Returns all fields defined in this typedef
+	 * @return
+	 */
+	public Iterable<String> getFields() {
+		return fields.keySet();
+	}
 }

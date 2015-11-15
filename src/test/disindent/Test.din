@@ -1,4 +1,4 @@
 use Test2.struct
 
-string foo(a is int)
-	'aaa\''
+struct foo(a is int)
+	clone struct <make struct with (a is a, b is 'foo')> with (b is 'bar')
