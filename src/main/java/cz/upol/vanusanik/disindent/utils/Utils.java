@@ -62,7 +62,7 @@ public class Utils {
 	 * @return java class name
 	 */
 	public static String asTypedefJavaName(String typedef) {
-		return "dniTypedef" + StringUtils.capitalize(typedef);
+		return StringUtils.capitalize(typedef);
 	}
 
 	/**
@@ -71,7 +71,7 @@ public class Utils {
 	 * @return java class name
 	 */
 	public static String asModuledefJavaName(String moduledef) {
-		return "dniModuledef" + StringUtils.capitalize(moduledef);
+		return "_m$" + StringUtils.capitalize(moduledef);
 	}
 	
 	/**

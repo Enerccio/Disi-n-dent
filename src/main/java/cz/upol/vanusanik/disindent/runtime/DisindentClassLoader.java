@@ -26,15 +26,25 @@ public class DisindentClassLoader extends ClassLoader {
 
 	@Override
 	public Class<?> findClass(String name) throws ClassNotFoundException {
-		if (!classCache.containsKey(name)){
-			synchronized (this){
-				if (!classCache.containsKey(name)){
-					byte[] data = load(name);
-					classCache.put(name, defineClass(name, data, 0, data.length));
+		try {
+			if (!classCache.containsKey(name)){
+				synchronized (this){
+					if (!classCache.containsKey(name)){
+						byte[] data = load(name);
+						classCache.put(name, defineClass(name, data, 0, data.length));
+					}
 				}
 			}
+			if (!classCache.containsKey(name))
+				return Thread.currentThread().getContextClassLoader().loadClass(name);
+			return classCache.get(name);
+		} catch (Throwable e){
+			try {
+				return Thread.currentThread().getContextClassLoader().loadClass(name);
+			} catch (Throwable e1){
+				throw e;
+			}
 		}
-		return classCache.get(name);
 	}
 
 	private byte[] load(String name) throws ClassNotFoundException {

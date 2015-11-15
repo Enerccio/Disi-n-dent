@@ -46,6 +46,7 @@ public class TypeRepresentation implements Serializable {
 	public static final TypeRepresentation STRING = new TypeRepresentation(SystemTypes.STRING);
 	public static final TypeRepresentation FUNCTION = new TypeRepresentation(SystemTypes.FUNCTION);
 	public static final TypeRepresentation ANY = new TypeRepresentation(SystemTypes.ANY);
+	public static final TypeRepresentation NULL = new TypeRepresentation(null);;
 	
 	static Map<String, TypeRepresentation> simpleTypeMap
 		= new HashMap<String, TypeRepresentation>();

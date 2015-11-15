@@ -20,6 +20,7 @@ import cz.upol.vanusanik.disindent.utils.Utils;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.AtomContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.BlockContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ConstArgContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqModuleNameContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FunctionContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.HeaderContext;
@@ -357,9 +358,9 @@ public class DisindentCompiler implements Opcodes {
 		}
 		
 		if (last){
-			if (!ret.equals(fc.returnType))
+			if (!CompilerUtils.congruentType(ret, fc.returnType))
 				throw new TypeException("wrong type at line " + operation.start.getLine());
-			CompilerUtils.addReturn(mv, ret);
+			CompilerUtils.addReturn(mv, fc.returnType);
 		}
 	}
 
@@ -374,8 +375,30 @@ public class DisindentCompiler implements Opcodes {
 		if (!last)
 			return null; // atoms are ignored if not last
 		
+		if (atom.getText().equals("none")){
+			// null
+			// returns null type
+			mv.visitInsn(ACONST_NULL);
+			return TypeRepresentation.NULL;
+		}
+		
+		if (atom.getText().equals("true")){
+			// true
+			// returns bool type
+			mv.visitLdcInsn(Boolean.TRUE);
+			return TypeRepresentation.BOOL;
+		}
+		
+		if (atom.getText().equals("false")){
+			// false
+			// returns bool type
+			mv.visitLdcInsn(Boolean.FALSE);
+			return TypeRepresentation.BOOL;
+		}
+		
 		if (atom.cast() != null){
 			// cast operation
+			// returns cast type
 			TypeRepresentation tr = compileAtom(mv, atom.cast().atom(), last);
 			TypeRepresentation as = CompilerUtils.asType(atom.cast().type(), imports);
 			CompilerUtils.congruentCast(mv, tr, as);
@@ -384,6 +407,7 @@ public class DisindentCompiler implements Opcodes {
 		
 		if (atom.accessor() != null){
 			// accessor operation
+			// return type of last nested accessor
 			TypeRepresentation varType = null;
 			for (IdentifierContext i : atom.accessor().dottedName().identifier()){
 				String name = i.getText();
@@ -400,6 +424,69 @@ public class DisindentCompiler implements Opcodes {
 				}
 			}
 			return varType;
+		}
+		
+		if (atom.constArg() != null){
+			// constant
+			ConstArgContext c = atom.constArg();
+			
+			if (c.IntegerConstant() != null){
+				// integer
+				String text = c.getText();
+				
+				int iv;
+				if (text.length() == 1)
+					iv = Integer.parseInt(text);
+				else if (text.charAt(0) == '0' && text.contains("b"))
+					iv = Integer.parseInt(text.substring(2), 2);
+				else if (text.charAt(0) == '0' && text.contains("x"))
+					iv = Integer.parseInt(text.substring(2), 16);
+				else if (text.charAt(0) == '0')
+					iv = Integer.parseInt(text.substring(1), 8);
+				else
+					iv = Integer.parseInt(text);
+				
+				mv.visitLdcInsn(iv);
+				return TypeRepresentation.INT;
+			}
+			
+			if (c.LongConstant() != null){
+				// long
+				String text = c.getText();
+				text = text.substring(0, text.length()-1);
+				
+				long lv;
+				if (text.length() == 1)
+					lv = Long.parseLong(text);
+				else if (text.charAt(0) == '0' && text.contains("b"))
+					lv = Long.parseLong(text.substring(2), 2);
+				else if (text.charAt(0) == '0' && text.contains("x"))
+					lv = Long.parseLong(text.substring(2), 16);
+				else if (text.charAt(0) == '0')
+					lv = Long.parseLong(text.substring(1), 8);
+				else
+					lv = Long.parseLong(text);
+				
+				mv.visitLdcInsn(lv);
+				return TypeRepresentation.LONG;
+			}
+			
+			if (c.DoubleConstant() != null){
+				// double
+				String text = c.getText();
+				double dv = Double.parseDouble(text);
+				mv.visitLdcInsn(dv);
+				return TypeRepresentation.DOUBLE;
+			}
+			
+			if (c.FloatConstant() != null){
+				// float
+				String text = c.getText();
+				text = text.substring(0, text.length()-1);
+				float fv = Float.parseFloat(text);
+				mv.visitLdcInsn(fv);
+				return TypeRepresentation.FLOAT;
+			}
 		}
 		
 		return null;

@@ -13,7 +13,7 @@ public class Test {
 		Object o = newClass.newInstance();
 		System.out.println(o);
 		
-		System.out.println(o.getClass().getMethod("foo", float.class).invoke(null, 1.0f));
+		System.out.println(o.getClass().getMethod("foo", int.class).invoke(null, -1));
+		System.out.println(o.getClass().getMethod("foo", int.class).invoke(null, 1));
 	}
-	
 }

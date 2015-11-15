@@ -116,7 +116,7 @@ public class CompilerUtils implements Opcodes {
 			mv.visitInsn(FRETURN);
 			break;
 		case LONG:
-			mv.visitInsn(IRETURN);
+			mv.visitInsn(LRETURN);
 			break;
 		case BYTE:
 		case BOOL:
@@ -285,6 +285,21 @@ public class CompilerUtils implements Opcodes {
 			}
 		}
 		
-		throw new TypeException("Types are incogruent for cast or implied cast " + tr + " " + as);
+		throw new TypeException("Types are incogruent for cast or implied cast " + tr + " to " + as);
+	}
+
+	/**
+	 * Returns true if types are congruent. Only calls equals and handles undefined reference type (null as atom for instance)
+	 * @param test
+	 * @param requiredType
+	 * @return
+	 */
+	public static boolean congruentType(TypeRepresentation test,
+			TypeRepresentation requiredType) {
+		if (test == TypeRepresentation.NULL){
+			if (requiredType.isComplexType() || requiredType.isCustomType())
+				return true;
+		}
+		return test.equals(requiredType);
 	}
 }
