@@ -122,6 +122,12 @@ public class TypeRepresentation implements Serializable {
 			return false;
 		return true;
 	}
+	
+	@Override
+	public String toString() {
+		return "TypeRepresentation [type=" + type + ", simpleType="
+				+ simpleType + ", fqTypeName=" + fqTypeName + "]";
+	}
 
 	/**
 	 * @return simple type representation or null if it is not a complex type

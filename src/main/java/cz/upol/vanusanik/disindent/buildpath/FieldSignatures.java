@@ -9,7 +9,7 @@ import java.util.Map;
  * @author Peter Vanusanik
  *
  */
-class FieldSignatures implements Serializable {
+public class FieldSignatures implements Serializable {
 	private static final long serialVersionUID = 3880945549157153280L;
 
 	/** Fields stored here */

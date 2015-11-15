@@ -12,6 +12,8 @@ public class Test {
 		Class<?> newClass = cl.loadClass(Utils.asModuledefJavaName("Test"));
 		Object o = newClass.newInstance();
 		System.out.println(o);
+		
+		System.out.println(o.getClass().getMethod("foo", float.class).invoke(null, 1.0f));
 	}
 	
 }

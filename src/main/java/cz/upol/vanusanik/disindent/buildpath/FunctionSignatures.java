@@ -17,9 +17,9 @@ public class FunctionSignatures implements Serializable {
 	
 	public void addFunction(String baseName, List<TypeRepresentation> types){
 		if (!functions.containsKey(baseName)){
-			functions.put(baseName, new FunctionSignature(baseName, "(", types, null));
+			functions.put(baseName, new FunctionSignature(baseName, "(", types, null, types));
 		} else {
-			functions.get(baseName).reparse(baseName, "(", types, null);
+			functions.get(baseName).reparse(baseName, "(", types, null, types);
 		}
 		functionNames.add(baseName);
 	}
@@ -41,5 +41,15 @@ public class FunctionSignatures implements Serializable {
 	 */
 	public SignatureSpecifier getSpecifier(String name, List<TypeRepresentation> trl){
 		return functions.get(name).methodName(trl);
+	}
+	
+	/**
+	 * Returns all valid signature specifiers by the return type and name
+	 * @param name
+	 * @param ret
+	 * @return
+	 */
+	public List<SignatureSpecifier> findSpecifierByReturn(String name, TypeRepresentation ret){
+		return functions.get(name).byReturn(ret, null);
 	}
 }

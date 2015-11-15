@@ -401,4 +401,11 @@ public class BuildPath implements Serializable {
 		return null;
 	}
 
+	public FieldSignatures getFieldSignatures(String fqTypeName) {
+		AvailableElement ae = bpElements.get(fqTypeName);
+		if (ae != null)
+			return ae.fieldSignatures;
+		return null;
+	}
+
 }

@@ -170,9 +170,13 @@ block:
 	;
 		
 operation:
-	  ((identifier|mathop) '(' simple_arguments? ')' NEWLINE) 
-	| ((identifier|mathop) NEWLINE INDENT arguments DEDENT) 
+	  (head '(' simple_arguments? ')' NEWLINE) 
+	| (head NEWLINE INDENT arguments DEDENT) 
 	| atom NEWLINE
+	;
+	
+head:
+	identifier|mathop
 	;
 	
 mathop:
@@ -195,7 +199,7 @@ atom:
 	;
 	
 cast:
-	'use' atom 'as' type
+	'use' '(' atom ')' 'as' type
 	;
 	
 accessor:
@@ -221,6 +225,15 @@ constArg:
 	| 'none'
 	| 'true'
 	| 'false'
+	| funcptr	
+;
+
+funcptr:
+	'&' funcdesignator
+	;
+	
+funcdesignator:
+	fqName
 	;
 	
 make:

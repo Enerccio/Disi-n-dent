@@ -11,6 +11,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 
 import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation;
+import cz.upol.vanusanik.disindent.errors.CompilationException;
 
 /**
  * Represents state of function at soem point of source code
@@ -54,7 +55,7 @@ public class FunctionContext {
 				return tr;
 		}
 		
-		return null;
+		throw new CompilationException("variable " + auto + " unbound");
 	}
 	
 	/**

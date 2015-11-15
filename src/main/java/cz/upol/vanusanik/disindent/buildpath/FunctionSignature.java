@@ -1,6 +1,8 @@
 package cz.upol.vanusanik.disindent.buildpath;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,18 +27,21 @@ public class FunctionSignature implements Serializable {
 		private static final long serialVersionUID = 4301832532980516571L;
 		public final String functionName;
 		public final String javaSignature;
-		public SignatureSpecifier(String functionName, String javaSignature) {
+		public final List<TypeRepresentation> specList;
+		
+		public SignatureSpecifier(String functionName, String javaSignature, List<TypeRepresentation> specList) {
 			super();
 			this.functionName = functionName;
 			this.javaSignature = javaSignature;
+			this.specList = Collections.unmodifiableList(new ArrayList<TypeRepresentation>(specList));
 		}
 	}
 	
-	public FunctionSignature(String name, String signSpec, List<TypeRepresentation> trList, String retSign){
+	public FunctionSignature(String name, String signSpec, List<TypeRepresentation> trList, String retSign, List<TypeRepresentation> oList){
 		if (trList.isEmpty()){
-			levelName = new SignatureSpecifier(name, signSpec+")"+retSign);
+			levelName = new SignatureSpecifier(name, signSpec+")"+retSign, oList);
 		} else {
-			reparse(name, signSpec, trList, retSign);
+			reparse(name, signSpec, trList, retSign, oList);
 		}
 	}
 
@@ -46,10 +51,10 @@ public class FunctionSignature implements Serializable {
 	 * @param signSpec
 	 * @param trList
 	 */
-	void reparse(String name, String signSpec, List<TypeRepresentation> trList, String retSign) {
+	void reparse(String name, String signSpec, List<TypeRepresentation> trList, String retSign, List<TypeRepresentation> oList) {
 		TypeRepresentation tr = trList.get(0);
 		List<TypeRepresentation> sublist = trList.subList(1, trList.size());
-		normalType(tr, name, signSpec, trList, sublist, retSign);
+		normalType(tr, name, signSpec, trList, sublist, retSign, oList);
 	}
 
 	/**
@@ -61,7 +66,7 @@ public class FunctionSignature implements Serializable {
 	 * @param sublist
 	 */
 	private void normalType(TypeRepresentation tr, String name, String signSpec,
-			List<TypeRepresentation> trList, List<TypeRepresentation> sublist, String retSign) {
+			List<TypeRepresentation> trList, List<TypeRepresentation> sublist, String retSign, List<TypeRepresentation> oList) {
 		if (subsignatures.containsKey(tr) && sublist.size() == 0)
 			throw new MethodAlreadyExistException();
 		
@@ -71,9 +76,9 @@ public class FunctionSignature implements Serializable {
 			signSpec = signSpec + tr.toJVMTypeString();
 		
 		if (!subsignatures.containsKey(tr))
-			subsignatures.put(tr, new FunctionSignature(name, signSpec, sublist, retSign));
+			subsignatures.put(tr, new FunctionSignature(name, signSpec, sublist, retSign, oList));
 		else
-			subsignatures.get(tr).reparse(name, signSpec, sublist, retSign);
+			subsignatures.get(tr).reparse(name, signSpec, sublist, retSign, oList);
 	}
 	
 	/**
@@ -88,5 +93,27 @@ public class FunctionSignature implements Serializable {
 			return subsignatures.get(trList.get(0)).methodName(trList.subList(1, trList.size()));
 		}
 		return null;
+	}
+
+	/**
+	 * Returns all valid type specs by return
+	 * @param ret
+	 * @param object
+	 * @return
+	 */
+	public List<SignatureSpecifier> byReturn(TypeRepresentation ret,
+			List<SignatureSpecifier> list) {
+		if (list == null){
+			list = new ArrayList<SignatureSpecifier>();
+			if (subsignatures.containsKey(ret))
+				subsignatures.get(ret).byReturn(ret, list);
+		} else {
+			if (levelName != null)
+				list.add(levelName);
+			else
+				for (TypeRepresentation tr : subsignatures.keySet())
+					subsignatures.get(tr).byReturn(ret, list);
+		}
+		return list;
 	}
 }

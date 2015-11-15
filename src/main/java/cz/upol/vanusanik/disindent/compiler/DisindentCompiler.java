@@ -9,17 +9,23 @@ import org.objectweb.asm.*;
 import org.objectweb.asm.util.CheckClassAdapter;
 
 import cz.upol.vanusanik.disindent.buildpath.BuildPath;
+import cz.upol.vanusanik.disindent.buildpath.FieldSignatures;
 import cz.upol.vanusanik.disindent.buildpath.FunctionSignature.SignatureSpecifier;
 import cz.upol.vanusanik.disindent.buildpath.FunctionSignatures;
 import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation;
 import cz.upol.vanusanik.disindent.errors.CompilationException;
+import cz.upol.vanusanik.disindent.errors.TypeException;
 import cz.upol.vanusanik.disindent.runtime.DisindentClassLoader;
 import cz.upol.vanusanik.disindent.utils.Utils;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.AtomContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.BlockContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqModuleNameContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FunctionContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.HeaderContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.IdentifierContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.NativeImportContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.OperationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ParameterContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ProgramContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypedefContext;
@@ -276,6 +282,126 @@ public class DisindentCompiler implements Opcodes {
 	 * @param fc
 	 */
 	private void compileFunction(ClassWriter cw, FunctionContext fc) {
+		HeaderContext header = fc.header();
+		BlockContext body = fc.block();
+		
+		List<TypeRepresentation> typeList = new ArrayList<TypeRepresentation>();
+		TypeRepresentation retType = CompilerUtils.asType(header.type(), imports);
 
+		typeList.add(retType);
+		this.fc = new cz.upol.vanusanik.disindent.compiler.FunctionContext(retType);
+		this.fc.push();
+
+		for (ParameterContext pc : Utils.searchForElementOfType(
+				ParameterContext.class, header.func_arguments())) {
+			TypeRepresentation tr;
+
+			this.fc.addLocal(pc.identifier().getText(), tr = CompilerUtils.asType(pc.type(), imports));
+			typeList.add(tr);
+		}
+
+		FunctionSignatures fcs = BuildPath.getBuildPath().getSignatures(
+				packageName, moduleName, header.identifier().getText());
+		SignatureSpecifier sign = fcs.getSpecifier(header.identifier().getText(),
+				typeList);
+
+		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, header.identifier().getText(), sign.javaSignature, null,
+				null);
+		mv.visitCode();
+		Label start = new Label();
+		mv.visitLineNumber(header.start.getLine(), start);
+		
+		compileBody(mv, body);
+		
+		this.fc.pop(mv, start);
+		mv.visitMaxs(0, 0);
+		mv.visitEnd();
+	}
+
+	/**
+	 * Compiles body element.
+	 * 
+	 * Body is compiled operation by operation and last operation's value is returned
+	 * @param mv
+	 * @param body
+	 */
+	private void compileBody(MethodVisitor mv, BlockContext body) {
+		Label bodyLabel = new Label();
+		mv.visitLabel(bodyLabel);
+		mv.visitLineNumber(body.start.getLine(), bodyLabel);
+		
+		int opc = body.operation().size();
+		for (int i=0; i<opc-1; i++)
+			compileOperation(mv, body.operation(i), false);
+		compileOperation(mv, body.operation(opc-1), true);
+	}
+
+	/**
+	 * Compiles single operation
+	 * @param mv
+	 * @param operation
+	 * @param last whether the operation is last on stack 
+	 */
+	private void compileOperation(MethodVisitor mv, OperationContext operation,
+			boolean last) {
+		Label opLabel = new Label();
+		mv.visitLabel(opLabel);
+		mv.visitLineNumber(operation.start.getLine(), opLabel);
+		
+		TypeRepresentation ret = null;
+		
+		if (operation.head() == null){
+			ret = compileAtom(mv, operation.atom(), last);
+		} else {
+			
+		}
+		
+		if (last){
+			if (!ret.equals(fc.returnType))
+				throw new TypeException("wrong type at line " + operation.start.getLine());
+			CompilerUtils.addReturn(mv, ret);
+		}
+	}
+
+	/**
+	 * Compiles atom, returns atom's type as type
+	 * @param mv
+	 * @param atom
+	 * @param last 
+	 * @return
+	 */
+	private TypeRepresentation compileAtom(MethodVisitor mv, AtomContext atom, boolean last) {
+		if (!last)
+			return null; // atoms are ignored if not last
+		
+		if (atom.cast() != null){
+			// cast operation
+			TypeRepresentation tr = compileAtom(mv, atom.cast().atom(), last);
+			TypeRepresentation as = CompilerUtils.asType(atom.cast().type(), imports);
+			CompilerUtils.congruentCast(mv, tr, as);
+			return as;
+		}
+		
+		if (atom.accessor() != null){
+			// accessor operation
+			TypeRepresentation varType = null;
+			for (IdentifierContext i : atom.accessor().dottedName().identifier()){
+				String name = i.getText();
+				if (varType == null){
+					varType = fc.autoToType(name);
+					CompilerUtils.addLoad(mv, fc.autoToNum(name), varType);
+				} else {
+					if (!varType.isCustomType())
+						throw new TypeException("Object is not typedef at line " + i.start.getLine());
+					FieldSignatures fs = BuildPath.getBuildPath().getFieldSignatures(varType.getFqTypeName());
+					TypeRepresentation nvarType = fs.getType(name);
+					mv.visitFieldInsn(GETFIELD, Utils.slashify(varType.getFqTypeName()), name, nvarType.toJVMTypeString());
+					varType = nvarType;
+				}
+			}
+			return varType;
+		}
+		
+		return null;
 	}
 }
