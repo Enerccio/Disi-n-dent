@@ -32,11 +32,11 @@ public class FunctionSignature implements Serializable {
 		}
 	}
 	
-	public FunctionSignature(String name, String signSpec, List<TypeRepresentation> trList){
+	public FunctionSignature(String name, String signSpec, List<TypeRepresentation> trList, String retSign){
 		if (trList.isEmpty()){
-			levelName = new SignatureSpecifier(name, signSpec+")");
+			levelName = new SignatureSpecifier(name, signSpec+")"+retSign);
 		} else {
-			reparse(name, signSpec, trList);
+			reparse(name, signSpec, trList, retSign);
 		}
 	}
 
@@ -46,10 +46,10 @@ public class FunctionSignature implements Serializable {
 	 * @param signSpec
 	 * @param trList
 	 */
-	void reparse(String name, String signSpec, List<TypeRepresentation> trList) {
+	void reparse(String name, String signSpec, List<TypeRepresentation> trList, String retSign) {
 		TypeRepresentation tr = trList.get(0);
 		List<TypeRepresentation> sublist = trList.subList(1, trList.size());
-		normalType(tr, name, signSpec, trList, sublist);
+		normalType(tr, name, signSpec, trList, sublist, retSign);
 	}
 
 	/**
@@ -61,19 +61,19 @@ public class FunctionSignature implements Serializable {
 	 * @param sublist
 	 */
 	private void normalType(TypeRepresentation tr, String name, String signSpec,
-			List<TypeRepresentation> trList, List<TypeRepresentation> sublist) {
+			List<TypeRepresentation> trList, List<TypeRepresentation> sublist, String retSign) {
 		if (subsignatures.containsKey(tr) && sublist.size() == 0)
 			throw new MethodAlreadyExistException();
 		
-		if (signSpec == null)
-			signSpec = tr.toJVMTypeString() + "(";
+		if (retSign == null)
+			retSign = tr.toJVMTypeString();
 		else
 			signSpec = signSpec + tr.toJVMTypeString();
 		
 		if (!subsignatures.containsKey(tr))
-			subsignatures.put(tr, new FunctionSignature(name, signSpec, sublist));
+			subsignatures.put(tr, new FunctionSignature(name, signSpec, sublist, retSign));
 		else
-			subsignatures.get(tr).reparse(name, signSpec, sublist);
+			subsignatures.get(tr).reparse(name, signSpec, sublist, retSign);
 	}
 	
 	/**

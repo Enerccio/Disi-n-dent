@@ -270,4 +270,40 @@ public class TypeRepresentation implements Serializable {
 			return "String";
 		}
 	}
+	
+	/**
+	 * Returns native java type for this type
+	 * @return
+	 */
+	public String toNativeTypeString() {
+		if (isCustomType())
+			return "Ljava/lang/Object;";
+		
+		if (isComplexType())
+			return "Lcz/upol/vanusanik/disindent/runtime/types/DList;";
+		
+		switch (type){
+		case ANY:
+			return "Ljava/lang/Object;";
+		case BOOL:
+			return "Z";
+		case BYTE:
+			return "B";
+		case SHORT:
+			return "S";
+		case DOUBLE:
+			return "D";
+		case FLOAT:
+			return "F";
+		case FUNCTION:
+			return "Ljava/lang/reflect/Method;";
+		case INT:
+			return "I";
+		case LONG:
+			return "J";
+		default:
+		case STRING:
+			return "Ljava/lang/String;";
+		}
+	}
 }

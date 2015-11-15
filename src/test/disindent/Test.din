@@ -1,4 +1,7 @@
 use Test2.struct
 
+int native foo(m is function, t is any, k is int)
+
+
 int specops(s is struct)
 	+(s.a, s.b)

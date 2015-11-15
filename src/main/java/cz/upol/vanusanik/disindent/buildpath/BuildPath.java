@@ -392,4 +392,13 @@ public class BuildPath implements Serializable {
 			v.validate(this);
 	}
 
+	public FunctionSignatures getSignatures(String packageName,
+			String moduleName, String text) {
+		String fqName = packageName.equals("") ? moduleName : packageName + "." + moduleName;
+		AvailableElement ae = bpElements.get(fqName);
+		if (ae != null)
+			return ae.functionSignatures;
+		return null;
+	}
+
 }

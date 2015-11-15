@@ -21,13 +21,13 @@ public class Imports implements Serializable {
 	private static final long serialVersionUID = -453373772681489736L;
 
 	/** Stores original names of the paths */
-	private Map<String, String> importMapOriginal
+	Map<String, String> importMapOriginal
 		= new HashMap<String, String>();
 	/** Stores import paths of typedefs */
-	private Map<String, String> importMap
+	Map<String, String> importMap
 		= new HashMap<String, String>();
 	/** Stores import paths of functions */
-	private Map<String, Set<String>> importMapFuncs
+	Map<String, Set<String>> importMapFuncs
 		= new HashMap<String, Set<String>>();
 
 	
