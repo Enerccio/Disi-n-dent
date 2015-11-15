@@ -18,6 +18,7 @@ public class CompilerUtils implements Opcodes {
 
 	/**
 	 * Returns TypeContext as TypeRepresentation
+	 * 
 	 * @param type
 	 * @return
 	 */
@@ -36,7 +37,8 @@ public class CompilerUtils implements Opcodes {
 		if (tr == null) {
 			String fqPath = imports.importMapOriginal.get(tt);
 			if (fqPath == null)
-				throw new MalformedImportDeclarationException("type " + tt + " is not defined");
+				throw new MalformedImportDeclarationException("type " + tt
+						+ " is not defined");
 
 			tr = new TypeRepresentation();
 			tr.setType(SystemTypes.CUSTOM);
@@ -53,35 +55,38 @@ public class CompilerUtils implements Opcodes {
 
 		return tr;
 	}
-	
+
 	/**
 	 * Returns native signature for types
+	 * 
 	 * @param typeList
 	 * @return
 	 */
 	public static String nativeSignature(List<TypeRepresentation> typeList) {
 		String sign = "(";
 		String rsign = null;
-		
-		for (TypeRepresentation tr : typeList){
-			if (rsign == null){
+
+		for (TypeRepresentation tr : typeList) {
+			if (rsign == null) {
 				rsign = ")" + tr.toNativeTypeString();
 			} else {
 				sign += tr.toNativeTypeString();
 			}
 		}
-		
+
 		return sign + rsign;
 	}
-	
+
 	/**
 	 * Adds correct type of load operation to stack based on argument type
+	 * 
 	 * @param mv
 	 * @param id
 	 * @param type
 	 */
-	public static void addLoad(MethodVisitor mv, Integer id, TypeRepresentation type) {
-		switch (type.getType()){
+	public static void addLoad(MethodVisitor mv, Integer id,
+			TypeRepresentation type) {
+		switch (type.getType()) {
 		case DOUBLE:
 			mv.visitVarInsn(DLOAD, id);
 			break;
@@ -108,7 +113,7 @@ public class CompilerUtils implements Opcodes {
 	}
 
 	public static void addReturn(MethodVisitor mv, TypeRepresentation type) {
-		switch (type.getType()){
+		switch (type.getType()) {
 		case DOUBLE:
 			mv.visitInsn(DRETURN);
 			break;
@@ -135,38 +140,46 @@ public class CompilerUtils implements Opcodes {
 	}
 
 	/**
-	 * Creates cast between tr and as type, if possible, if not throws exception 
+	 * Creates cast between tr and as type, if possible, if not throws exception
+	 * 
 	 * @param mv
 	 * @param tr
 	 * @param as
 	 */
 	public static void congruentCast(MethodVisitor mv, TypeRepresentation tr,
 			TypeRepresentation as) {
-		if (as.getType() == SystemTypes.ANY){
-			if (tr.isComplexType() || tr.isCustomType()){
+		if (as.getType() == SystemTypes.ANY) {
+			if (tr.isComplexType() || tr.isCustomType()) {
 				mv.visitTypeInsn(CHECKCAST, "java/lang/Object");
 			} else {
-				switch (tr.getType()){
+				switch (tr.getType()) {
 				case BOOL:
-					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean", "valueOf", "(Z)Ljava/lang/Boolean;", false);
+					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Boolean",
+							"valueOf", "(Z)Ljava/lang/Boolean;", false);
 					break;
 				case BYTE:
-					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Byte", "valueOf", "(B)Ljava/lang/Byte;", false);
+					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Byte",
+							"valueOf", "(B)Ljava/lang/Byte;", false);
 					break;
 				case DOUBLE:
-					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Double", "valueOf", "(D)Ljava/lang/Double;", false);
+					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Double",
+							"valueOf", "(D)Ljava/lang/Double;", false);
 					break;
 				case FLOAT:
-					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Float", "valueOf", "(F)Ljava/lang/Float;", false);
+					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Float",
+							"valueOf", "(F)Ljava/lang/Float;", false);
 					break;
 				case INT:
-					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", false);
+					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Integer",
+							"valueOf", "(I)Ljava/lang/Integer;", false);
 					break;
 				case LONG:
-					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Long", "valueOf", "(J)Ljava/lang/Long;", false);
+					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Long",
+							"valueOf", "(J)Ljava/lang/Long;", false);
 					break;
 				case SHORT:
-					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Short", "valueOf", "(S)Ljava/lang/Short;", false);
+					mv.visitMethodInsn(INVOKESTATIC, "java/lang/Short",
+							"valueOf", "(S)Ljava/lang/Short;", false);
 					break;
 				default:
 				case FUNCTION:
@@ -177,26 +190,28 @@ public class CompilerUtils implements Opcodes {
 				mv.visitTypeInsn(CHECKCAST, "java/lang/Object");
 			}
 			return; // any always succeeds
-		} else if (as.isComplexType()){
+		} else if (as.isComplexType()) {
 			if (as.equals(tr))
 				return;
-			// complex types only succeed if they the same, ie cast was not necessary
-		} else if (as.isCustomType()){
+			// complex types only succeed if they the same, ie cast was not
+			// necessary
+		} else if (as.isCustomType()) {
 			if (as.equals(tr))
 				return;
-			// custom types only succeed if they are both custom, ie cast was not necessary
+			// custom types only succeed if they are both custom, ie cast was
+			// not necessary
 		} else {
-			switch (as.getType()){
-			case ANY:				
-			case COMPLEX:				
+			switch (as.getType()) {
+			case ANY:
+			case COMPLEX:
 			case CUSTOM:
 				break;
-				
+
 			case BOOL:
 			case INT:
 			case BYTE:
 			case SHORT:
-				switch (tr.getType()){
+				switch (tr.getType()) {
 				case BOOL:
 				case BYTE:
 				case INT:
@@ -215,7 +230,7 @@ public class CompilerUtils implements Opcodes {
 					break;
 				}
 			case DOUBLE:
-				switch (tr.getType()){
+				switch (tr.getType()) {
 				case BOOL:
 				case BYTE:
 				case INT:
@@ -234,7 +249,7 @@ public class CompilerUtils implements Opcodes {
 					break;
 				}
 			case FLOAT:
-				switch (tr.getType()){
+				switch (tr.getType()) {
 				case BOOL:
 				case BYTE:
 				case INT:
@@ -254,7 +269,7 @@ public class CompilerUtils implements Opcodes {
 				}
 				break;
 			case LONG:
-				switch (tr.getType()){
+				switch (tr.getType()) {
 				case BOOL:
 				case BYTE:
 				case INT:
@@ -267,13 +282,13 @@ public class CompilerUtils implements Opcodes {
 				case FLOAT:
 					mv.visitInsn(F2L);
 					return;
-				case LONG:					
+				case LONG:
 					return;
 				default:
 					break;
 				}
 				break;
-				
+
 			case STRING:
 				if (tr.getType() == SystemTypes.STRING)
 					return;
@@ -284,20 +299,27 @@ public class CompilerUtils implements Opcodes {
 				break;
 			}
 		}
-		
-		throw new TypeException("Types are incogruent for cast or implied cast " + tr + " to " + as);
+
+		throw new TypeException(
+				"Types are incogruent for cast or implied cast " + tr + " to "
+						+ as);
 	}
 
 	/**
-	 * Returns true if types are congruent. Only calls equals and handles undefined reference type (null as atom for instance)
+	 * Returns true if types are congruent. Only calls equals and handles
+	 * undefined reference type (null as atom for instance)
+	 * 
 	 * @param test
 	 * @param requiredType
 	 * @return
 	 */
 	public static boolean congruentType(TypeRepresentation test,
 			TypeRepresentation requiredType) {
-		if (test == TypeRepresentation.NULL){
-			if (requiredType.isComplexType() || requiredType.isCustomType())
+		if (test == TypeRepresentation.NULL) {
+			if (requiredType.isComplexType() || requiredType.isCustomType()
+					|| requiredType.getType() == SystemTypes.ANY
+					|| requiredType.getType() == SystemTypes.FUNCTION
+					|| requiredType.getType() == SystemTypes.STRING)
 				return true;
 		}
 		return test.equals(requiredType);

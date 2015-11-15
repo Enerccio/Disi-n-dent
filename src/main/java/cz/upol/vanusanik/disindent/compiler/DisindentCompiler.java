@@ -487,6 +487,14 @@ public class DisindentCompiler implements Opcodes {
 				mv.visitLdcInsn(fv);
 				return TypeRepresentation.FLOAT;
 			}
+			
+			if (c.String() != null){
+				String strValue = c.getText();
+				strValue = Utils.removeEscapes(strValue);
+				strValue = strValue.substring(1, strValue.length()-1);
+				mv.visitLdcInsn(strValue);
+				return TypeRepresentation.STRING;
+			}
 		}
 		
 		return null;
