@@ -198,7 +198,7 @@ arguments:
 	;
 	
 simple_op:
-	'call' head 'with' '(' simple_arguments? ')'
+	head '(' simple_arguments? ')'
 	;
 	
 head:
@@ -206,7 +206,11 @@ head:
 	;
 	
 mathop:
-	'+' | '-' | '*' | '/'
+	'+' | '-' | '*' | '/' | compop
+	;
+	
+compop:
+	'=' | '>' | '<' | '>=' | '<=' | '<>'
 	;
 	
 simple_arguments:

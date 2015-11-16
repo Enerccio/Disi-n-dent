@@ -1,6 +1,6 @@
 
 
 double foo(test is bool, a is double, b is double)
-	if test
-		a
-		b
+	if =(a, b)
+		5000.0
+		6000.0

@@ -342,6 +342,11 @@ public class CompilerUtils implements Opcodes {
 		return test.equals(requiredType);
 	}
 
+	/**
+	 * Default value for type
+	 * @param mv
+	 * @param type
+	 */
 	public static void defaultValue(MethodVisitor mv, TypeRepresentation type) {
 		if (type.isComplexType() || type.isCustomType()
 				|| type.getType() == SystemTypes.ANY
@@ -381,5 +386,22 @@ public class CompilerUtils implements Opcodes {
 		default:
 			break;
 		}
+	}
+
+	/**
+	 * Returns jump type for operation, this jump type must jump when true
+	 * @param operation
+	 * @return
+	 */
+	public static int cmpChoice(String operation) {
+		switch (operation){
+		case "=" : return IF_ICMPEQ;
+		case "<>": return IF_ICMPNE;
+		case ">": return IF_ICMPGT;
+		case "<": return IF_ICMPLT;
+		case ">=": return IF_ICMPLE;
+		case "<=": return IF_ICMPGE;
+		}
+		return 0;
 	}
 }

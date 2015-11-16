@@ -64,7 +64,8 @@ public class DisindentCompiler implements Opcodes {
 	/** imports are listed here */
 	private Imports imports = new Imports();
 
-	public DisindentCompiler(String filename, disindentParser parser, DisindentClassLoader loader) {
+	public DisindentCompiler(String filename, disindentParser parser,
+			DisindentClassLoader loader) {
 		this.parser = parser;
 		this.filename = filename;
 		this.moduleName = FilenameUtils.getBaseName(filename);
@@ -104,7 +105,9 @@ public class DisindentCompiler implements Opcodes {
 	private void compileModule() {
 		byte[] moduleByteData = doCompileModule();
 
-		cl.addClass(Utils.slashify(Utils.fullNameForClass(Utils.asModuledefJavaName(moduleName), packageName)),
+		cl.addClass(
+				Utils.slashify(Utils.fullNameForClass(
+						Utils.asModuledefJavaName(moduleName), packageName)),
 				moduleByteData);
 	}
 
@@ -118,7 +121,8 @@ public class DisindentCompiler implements Opcodes {
 		ProgramContext pc = parser.program();
 		if (pc.package_declaration() != null) {
 			packageName = pc.package_declaration().javaName().getText();
-			fqThisType = Utils.slashify(packageName) + "/" + Utils.asModuledefJavaName(moduleName);
+			fqThisType = Utils.slashify(packageName) + "/"
+					+ Utils.asModuledefJavaName(moduleName);
 		} else {
 			fqThisType = Utils.asModuledefJavaName(moduleName);
 		}
@@ -135,21 +139,26 @@ public class DisindentCompiler implements Opcodes {
 			compileNewType(tdc);
 		}
 
-		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-		cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, fqThisType, null, "java/lang/Object", null);
+		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS
+				| ClassWriter.COMPUTE_FRAMES);
+		cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, fqThisType, null,
+				"java/lang/Object", null);
 		cw.visitSource(filename, null);
 
-		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null,
+				null);
 		mv.visitCode();
 		Label l0 = new Label();
 		mv.visitLabel(l0);
 		mv.visitLineNumber(0, l0);
 		mv.visitVarInsn(ALOAD, 0);
-		mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+		mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V",
+				false);
 		mv.visitInsn(RETURN);
 		Label l1 = new Label();
 		mv.visitLabel(l1);
-		mv.visitLocalVariable("this", Utils.asLName(fqThisType), null, l0, l1, 0);
+		mv.visitLocalVariable("this", Utils.asLName(fqThisType), null, l0, l1,
+				0);
 		mv.visitMaxs(0, 0);
 		mv.visitEnd();
 
@@ -187,9 +196,11 @@ public class DisindentCompiler implements Opcodes {
 				imports.addImport(fqName);
 			} else {
 				Using_functionsContext fc = ud.using_functions();
-				List<UsesContext> usesList = Utils.searchForElementOfType(UsesContext.class, fc);
-				FqModuleNameContext fmnc = Utils.searchForElementOfType(FqModuleNameContext.class, fc).iterator()
-						.next();
+				List<UsesContext> usesList = Utils.searchForElementOfType(
+						UsesContext.class, fc);
+				FqModuleNameContext fmnc = Utils
+						.searchForElementOfType(FqModuleNameContext.class, fc)
+						.iterator().next();
 
 				String moduleName = fmnc.getText();
 				for (UsesContext usc : usesList) {
@@ -202,21 +213,27 @@ public class DisindentCompiler implements Opcodes {
 
 		for (TypedefContext tc : pc.typedef()) {
 			String typedefName = tc.typedef_header().identifier().getText();
-			String fqName = (packageName.equals("") ? moduleName : packageName + "." + moduleName) + "." + typedefName;
+			String fqName = (packageName.equals("") ? moduleName : packageName
+					+ "." + moduleName)
+					+ "." + typedefName;
 			imports.add(typedefName, fqName);
 			imports.add(moduleName + "." + typedefName, fqName);
 		}
 
 		for (FunctionContext fc : pc.function()) {
 			String fncName = fc.header().identifier().getText();
-			String fqName = (packageName.equals("") ? moduleName : packageName + "." + moduleName) + "." + fncName;
+			String fqName = (packageName.equals("") ? moduleName : packageName
+					+ "." + moduleName)
+					+ "." + fncName;
 			imports.add(fncName, fqName);
 			imports.add(moduleName + "." + fncName, fqName);
 		}
 
 		for (NativeImportContext nc : pc.nativeImport()) {
 			String fncName = nc.identifier().getText();
-			String fqName = (packageName.equals("") ? moduleName : packageName + "." + moduleName + ".") + fncName;
+			String fqName = (packageName.equals("") ? moduleName : packageName
+					+ "." + moduleName + ".")
+					+ fncName;
 			imports.add(fncName, fqName);
 			imports.add(moduleName + "." + fncName, fqName);
 		}
@@ -229,21 +246,28 @@ public class DisindentCompiler implements Opcodes {
 	 */
 	private void compileNewType(TypedefContext tdc) {
 		String typedefName = tdc.typedef_header().identifier().getText();
-		String fqTypedefPath = (packageName.equals("") ? moduleName : packageName + "." + moduleName) + "."
+		String fqTypedefPath = (packageName.equals("") ? moduleName
+				: packageName + "." + moduleName)
+				+ "."
 				+ Utils.asTypedefJavaName(typedefName);
-		String fqJavaPath = fqThisType + "$" + Utils.asTypedefJavaName(typedefName);
+		String fqJavaPath = fqThisType + "$"
+				+ Utils.asTypedefJavaName(typedefName);
 
-		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
-		cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, fqJavaPath, null, "java/lang/Object", null);
+		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS
+				| ClassWriter.COMPUTE_FRAMES);
+		cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, fqJavaPath, null,
+				"java/lang/Object", null);
 		cw.visitSource(filename, null);
 
-		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null, null);
+		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null,
+				null);
 		mv.visitCode();
 		Label l0 = new Label();
 		mv.visitLabel(l0);
 		mv.visitLineNumber(0, l0);
 		mv.visitVarInsn(ALOAD, 0);
-		mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+		mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V",
+				false);
 
 		fc = new cz.upol.vanusanik.disindent.compiler.FunctionContext(null);
 		fc.push();
@@ -251,23 +275,27 @@ public class DisindentCompiler implements Opcodes {
 		thisType.setFqTypeName(fqTypedefPath);
 		fc.addLocal("this", thisType);
 
-		for (Field_declarationContext fdc : tdc.typedef_body().field_declaration()) {
+		for (Field_declarationContext fdc : tdc.typedef_body()
+				.field_declaration()) {
 			String fname = fdc.identifier().getText();
 			TypeRepresentation type = CompilerUtils.asType(fdc.type(), imports);
 
-			FieldVisitor fv = cw.visitField(ACC_PUBLIC, fname, type.toJVMTypeString(), null, null);
+			FieldVisitor fv = cw.visitField(ACC_PUBLIC, fname,
+					type.toJVMTypeString(), null, null);
 			fv.visitEnd();
 
 			mv.visitVarInsn(ALOAD, 0);
 			if (fdc.atom() != null) {
 				TypeRepresentation atomType = compileAtom(mv, fdc.atom(), true);
 				if (!CompilerUtils.congruentType(mv, atomType, type))
-					throw new TypeException("wrong type at line " + fdc.start.getLine());
+					throw new TypeException("wrong type at line "
+							+ fdc.start.getLine());
 			} else {
 				// default value
 				CompilerUtils.defaultValue(mv, type);
 			}
-			mv.visitFieldInsn(PUTFIELD, fqJavaPath, fname, type.toJVMTypeString());
+			mv.visitFieldInsn(PUTFIELD, fqJavaPath, fname,
+					type.toJVMTypeString());
 		}
 
 		mv.visitInsn(RETURN);
@@ -297,7 +325,8 @@ public class DisindentCompiler implements Opcodes {
 	 */
 	private void compileNative(ClassWriter cw, NativeImportContext nc) {
 		String className = moduleName;
-		String fqType = Utils.slashify(nativePackage.equals("") ? className : nativePackage + "." + className);
+		String fqType = Utils.slashify(nativePackage.equals("") ? className
+				: nativePackage + "." + className);
 
 		List<TypeRepresentation> typeList = new ArrayList<TypeRepresentation>();
 		TypeRepresentation retType = CompilerUtils.asType(nc.type(), imports);
@@ -306,23 +335,28 @@ public class DisindentCompiler implements Opcodes {
 		fc = new cz.upol.vanusanik.disindent.compiler.FunctionContext(retType);
 		fc.push();
 
-		for (ParameterContext pc : Utils.searchForElementOfType(ParameterContext.class, nc.func_arguments())) {
+		for (ParameterContext pc : Utils.searchForElementOfType(
+				ParameterContext.class, nc.func_arguments())) {
 			TypeRepresentation tr;
 
-			fc.addLocal(pc.identifier().getText(), tr = CompilerUtils.asType(pc.type(), imports));
+			fc.addLocal(pc.identifier().getText(),
+					tr = CompilerUtils.asType(pc.type(), imports));
 			typeList.add(tr);
 		}
 
-		FunctionSignatures fcs = BuildPath.getBuildPath().getSignatures(packageName, moduleName);
-		SignatureSpecifier sign = fcs.getSpecifier(nc.identifier().getText(), typeList);
+		FunctionSignatures fcs = BuildPath.getBuildPath().getSignatures(
+				packageName, moduleName);
+		SignatureSpecifier sign = fcs.getSpecifier(nc.identifier().getText(),
+				typeList);
 
-		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, nc.identifier().getText(), sign.javaSignature, null,
-				null);
+		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, nc
+				.identifier().getText(), sign.javaSignature, null, null);
 		mv.visitCode();
 		Label start = new Label();
 		mv.visitLineNumber(nc.start.getLine(), start);
 
-		for (ParameterContext pc : Utils.searchForElementOfType(ParameterContext.class, nc.func_arguments())) {
+		for (ParameterContext pc : Utils.searchForElementOfType(
+				ParameterContext.class, nc.func_arguments())) {
 			String auto = pc.identifier().getText();
 			Integer id = fc.autoToNum(auto);
 			TypeRepresentation type = fc.autoToType(auto);
@@ -330,8 +364,8 @@ public class DisindentCompiler implements Opcodes {
 			CompilerUtils.addLoad(mv, id, type);
 		}
 
-		mv.visitMethodInsn(INVOKESTATIC, fqType, nc.identifier().getText(), CompilerUtils.nativeSignature(typeList),
-				false);
+		mv.visitMethodInsn(INVOKESTATIC, fqType, nc.identifier().getText(),
+				CompilerUtils.nativeSignature(typeList), false);
 		CompilerUtils.addReturn(mv, fc.returnType);
 
 		fc.pop(mv, start);
@@ -350,24 +384,30 @@ public class DisindentCompiler implements Opcodes {
 		BlockContext body = fc.block();
 
 		List<TypeRepresentation> typeList = new ArrayList<TypeRepresentation>();
-		TypeRepresentation retType = CompilerUtils.asType(header.type(), imports);
+		TypeRepresentation retType = CompilerUtils.asType(header.type(),
+				imports);
 
 		typeList.add(retType);
-		this.fc = new cz.upol.vanusanik.disindent.compiler.FunctionContext(retType);
+		this.fc = new cz.upol.vanusanik.disindent.compiler.FunctionContext(
+				retType);
 		this.fc.push();
 
-		for (ParameterContext pc : Utils.searchForElementOfType(ParameterContext.class, header.func_arguments())) {
+		for (ParameterContext pc : Utils.searchForElementOfType(
+				ParameterContext.class, header.func_arguments())) {
 			TypeRepresentation tr;
 
-			this.fc.addLocal(pc.identifier().getText(), tr = CompilerUtils.asType(pc.type(), imports));
+			this.fc.addLocal(pc.identifier().getText(),
+					tr = CompilerUtils.asType(pc.type(), imports));
 			typeList.add(tr);
 		}
 
-		FunctionSignatures fcs = BuildPath.getBuildPath().getSignatures(packageName, moduleName);
-		SignatureSpecifier sign = fcs.getSpecifier(header.identifier().getText(), typeList);
+		FunctionSignatures fcs = BuildPath.getBuildPath().getSignatures(
+				packageName, moduleName);
+		SignatureSpecifier sign = fcs.getSpecifier(header.identifier()
+				.getText(), typeList);
 
-		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, header.identifier().getText(), sign.javaSignature,
-				null, null);
+		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, header
+				.identifier().getText(), sign.javaSignature, null, null);
 		mv.visitCode();
 		Label start = new Label();
 		mv.visitLineNumber(header.start.getLine(), start);
@@ -396,9 +436,12 @@ public class DisindentCompiler implements Opcodes {
 		int opc = body.operation().size();
 		for (int i = 0; i < opc - 1; i++)
 			compileOperation(mv, body.operation(i), false);
-		TypeRepresentation ret = compileOperation(mv, body.operation(opc - 1), true);
+		TypeRepresentation ret = compileOperation(mv, body.operation(opc - 1),
+				true);
 		if (!CompilerUtils.congruentType(mv, ret, fc.returnType))
-			throw new TypeException("wrong type at line " + body.operation(opc - 1).start.getLine() + " expected " + fc.returnType + ", got " + ret);
+			throw new TypeException("wrong type at line "
+					+ body.operation(opc - 1).start.getLine() + " expected "
+					+ fc.returnType + ", got " + ret);
 		CompilerUtils.addReturn(mv, fc.returnType);
 	}
 
@@ -410,7 +453,8 @@ public class DisindentCompiler implements Opcodes {
 	 * @param last
 	 *            whether the operation is last on stack
 	 */
-	private TypeRepresentation compileOperation(MethodVisitor mv, OperationContext operation, boolean last) {
+	private TypeRepresentation compileOperation(MethodVisitor mv,
+			OperationContext operation, boolean last) {
 		Label opLabel = new Label();
 		mv.visitLabel(opLabel);
 		mv.visitLineNumber(operation.start.getLine(), opLabel);
@@ -419,10 +463,11 @@ public class DisindentCompiler implements Opcodes {
 
 		if (operation.head() == null) {
 			// TODO specific forms added later like if here
-			if (operation.complex_operation() != null){
-				return compileComplexOperation(mv, operation.complex_operation(), last);
+			if (operation.complex_operation() != null) {
+				return compileComplexOperation(mv,
+						operation.complex_operation(), last);
 			}
-			
+
 			ret = compileAtom(mv, operation.atom_operation().atom(), last);
 			if (!last) {
 				if (ret.isDoubleMemory())
@@ -441,15 +486,17 @@ public class DisindentCompiler implements Opcodes {
 
 		return ret;
 	}
-	
+
 	/**
 	 * compiles operation
+	 * 
 	 * @param mv
 	 * @param operation
 	 * @param last
 	 * @return
 	 */
-	private TypeRepresentation compileOperation(MethodVisitor mv, Operation_nonlContext operation, boolean last) {
+	private TypeRepresentation compileOperation(MethodVisitor mv,
+			Operation_nonlContext operation, boolean last) {
 		Label opLabel = new Label();
 		mv.visitLabel(opLabel);
 		mv.visitLineNumber(operation.start.getLine(), opLabel);
@@ -458,10 +505,11 @@ public class DisindentCompiler implements Opcodes {
 
 		if (operation.head() == null) {
 			// TODO specific forms added later like if here
-			if (operation.complex_operation() != null){
-				return compileComplexOperation(mv, operation.complex_operation(), last);
+			if (operation.complex_operation() != null) {
+				return compileComplexOperation(mv,
+						operation.complex_operation(), last);
 			}
-			
+
 			ret = compileAtom(mv, operation.atom(), last);
 			if (!last) {
 				if (ret.isDoubleMemory())
@@ -483,6 +531,7 @@ public class DisindentCompiler implements Opcodes {
 
 	/**
 	 * Compiles complex operation element (if, etc)
+	 * 
 	 * @param mv
 	 * @param complex_operation
 	 * @param last
@@ -490,15 +539,16 @@ public class DisindentCompiler implements Opcodes {
 	 */
 	private TypeRepresentation compileComplexOperation(MethodVisitor mv,
 			Complex_operationContext complex_operation, boolean last) {
-		
+
 		if (complex_operation.if_operation() != null)
 			return compileIf(mv, complex_operation.if_operation(), last);
-		
+
 		return null;
 	}
 
 	/**
 	 * Compiles if
+	 * 
 	 * @param mv
 	 * @param if_operation
 	 * @param last
@@ -507,51 +557,53 @@ public class DisindentCompiler implements Opcodes {
 	private TypeRepresentation compileIf(MethodVisitor mv,
 			If_operationContext if_operation, boolean last) {
 		boolean hasElse = if_operation.operation().size() == 2;
-		
+
 		Label ifStart = new Label();
 		Label ifEnd = new Label();
 		Label ifElse = new Label();
-		
+
 		mv.visitLabel(ifStart);
 		mv.visitLineNumber(if_operation.start.getLine(), ifStart);
-		
+
 		TypeRepresentation tr = compileAtom(mv, if_operation.atom(), true);
 		if (!CompilerUtils.congruentType(mv, tr, TypeRepresentation.BOOL))
 			throw new TypeException("if test expression requires bool type");
 		mv.visitJumpInsn(IFEQ, hasElse ? ifElse : ifEnd);
-		
-		
+
 		OperationContext trueContext = if_operation.operation(0);
 		TypeRepresentation ifType = compileOperation(mv, trueContext, true);
 		TypeRepresentation elseType = ifType;
-		
+
 		if (hasElse) {
 			mv.visitJumpInsn(GOTO, ifEnd);
 			mv.visitLabel(ifElse);
 			elseType = compileOperation(mv, if_operation.operation(1), true);
 		}
-		
+
 		mv.visitLabel(ifEnd);
 		mv.visitLineNumber(if_operation.stop.getLine(), ifEnd);
-		
+
 		if (!ifType.equals(elseType))
 			throw new TypeException("types must match for if/else branches");
-		
+
 		return ifType;
 	}
 
 	/**
 	 * Compiles simple operation (call or math operation)
+	 * 
 	 * @param mv
 	 * @param simple_op
 	 * @param last
 	 * @return
 	 */
-	private TypeRepresentation compileSimpleOp(MethodVisitor mv, Simple_opContext simple_op, boolean last) {
+	private TypeRepresentation compileSimpleOp(MethodVisitor mv,
+			Simple_opContext simple_op, boolean last) {
 		List<TypeRepresentation> argList = new ArrayList<TypeRepresentation>();
 
-		if (simple_op.simple_arguments() != null){
-			List<AtomContext> aList = new ArrayList<AtomContext>(simple_op.simple_arguments().atom());
+		if (simple_op.simple_arguments() != null) {
+			List<AtomContext> aList = new ArrayList<AtomContext>(simple_op
+					.simple_arguments().atom());
 			for (AtomContext a : aList) {
 				argList.add(compileAtom(mv, a, true));
 			}
@@ -563,52 +615,60 @@ public class DisindentCompiler implements Opcodes {
 
 	/**
 	 * Compiles operation (call or math operation)
+	 * 
 	 * @param mv
 	 * @param operation
 	 * @param last
 	 * @return
 	 */
-	private TypeRepresentation compileOp(MethodVisitor mv, OperationContext operation, boolean last) {
+	private TypeRepresentation compileOp(MethodVisitor mv,
+			OperationContext operation, boolean last) {
 		List<TypeRepresentation> argList = new ArrayList<TypeRepresentation>();
-		
-		List<OperationContext> opList = new ArrayList<OperationContext>(operation.arguments().operation());
+
+		List<OperationContext> opList = new ArrayList<OperationContext>(
+				operation.arguments().operation());
 		for (OperationContext opc : opList) {
 			TypeRepresentation tr = compileOperation(mv, opc, true);
 			argList.add(tr);
 		}
-		
 
 		return compileStandardFuncCall(mv, argList, operation.head(), last);
 	}
-	
+
 	/**
-	 * Same as other compileOp, but on different syntactical element with same semantics
+	 * Same as other compileOp, but on different syntactical element with same
+	 * semantics
+	 * 
 	 * @param mv
 	 * @param operation
 	 * @param last
 	 * @return
 	 */
-	private TypeRepresentation compileOp(MethodVisitor mv, Operation_nonlContext operation, boolean last) {
+	private TypeRepresentation compileOp(MethodVisitor mv,
+			Operation_nonlContext operation, boolean last) {
 		List<TypeRepresentation> argList = new ArrayList<TypeRepresentation>();
-		
-		List<OperationContext> opList = new ArrayList<OperationContext>(operation.arguments().operation());
+
+		List<OperationContext> opList = new ArrayList<OperationContext>(
+				operation.arguments().operation());
 		for (OperationContext opc : opList) {
 			TypeRepresentation tr = compileOperation(mv, opc, true);
 			argList.add(tr);
 		}
-		
 
 		return compileStandardFuncCall(mv, argList, operation.head(), last);
 	}
 
-	private TypeRepresentation compileStandardFuncCall(MethodVisitor mv, List<TypeRepresentation> argList,
-			HeadContext head, boolean last) {
+	private TypeRepresentation compileStandardFuncCall(MethodVisitor mv,
+			List<TypeRepresentation> argList, HeadContext head, boolean last) {
 		TypeRepresentation returnType = null;
 
 		if (head.mathop() == null)
-			returnType = compileCall(mv, head.fqName().getText(), argList, head.fqName().start.getLine());
+			returnType = compileCall(mv, head.fqName().getText(), argList,
+					head.fqName().start.getLine());
 		else
-			returnType = compileMath(mv, head.mathop().getText(), argList, head.mathop().start.getLine());
+			returnType = compileMath(mv, head.mathop().getText(), argList,
+					head.mathop().start.getLine(),
+					head.mathop().compop() != null);
 
 		return returnType;
 	}
@@ -622,13 +682,14 @@ public class DisindentCompiler implements Opcodes {
 	 * @param lineno
 	 * @return
 	 */
-	private TypeRepresentation compileCall(MethodVisitor mv, String fncName, List<TypeRepresentation> argList,
-			int lineno) {
+	private TypeRepresentation compileCall(MethodVisitor mv, String fncName,
+			List<TypeRepresentation> argList, int lineno) {
 		String fqPath = imports.importMapOriginal.get(fncName);
 		if (fqPath == null && fncName.contains("."))
 			fqPath = fncName;
 		if (fqPath == null)
-			throw new MalformedImportDeclarationException("function " + fncName + " is not defined");
+			throw new MalformedImportDeclarationException("function " + fncName
+					+ " is not defined");
 		String typeName = fqPath.substring(0, fqPath.lastIndexOf('.'));
 		String justTypeName = typeName;
 		String packageName = "";
@@ -636,25 +697,29 @@ public class DisindentCompiler implements Opcodes {
 			packageName = typeName.substring(0, typeName.lastIndexOf('.'));
 			justTypeName = typeName.substring(typeName.lastIndexOf('.') + 1);
 		}
-		
+
 		String[] split = Utils.splitByLastDot(fncName);
-		fncName = split[split.length-1];
-		
+		fncName = split[split.length - 1];
+
 		BuildPath bp = BuildPath.getBuildPath();
 		String cp = bp.getClassPath(typeName);
 		FunctionSignatures fc = bp.getSignatures(packageName, justTypeName);
 
 		if (fc == null || cp == null)
-			throw new MalformedImportDeclarationException("type " + typeName + " is not defined");
+			throw new MalformedImportDeclarationException("type " + typeName
+					+ " is not defined");
 
 		SignatureSpecifier fncSign = fc.findByParameters(fncName, argList);
 		if (fncSign == null)
-			throw new TypeException("function " + fncName + " has no signature for types " + argList + " or does not exist");
+			throw new TypeException("function " + fncName
+					+ " has no signature for types " + argList
+					+ " or does not exist");
 
 		Label lc = new Label();
 		mv.visitLabel(lc);
 		mv.visitLineNumber(lineno, lc);
-		mv.visitMethodInsn(INVOKESTATIC, cp, fncName, fncSign.javaSignature, false);
+		mv.visitMethodInsn(INVOKESTATIC, cp, fncName, fncSign.javaSignature,
+				false);
 
 		return fncSign.retType;
 	}
@@ -666,31 +731,40 @@ public class DisindentCompiler implements Opcodes {
 	 * @param mathop
 	 * @param argList
 	 * @param lineno
+	 * @param compOp
 	 * @return
 	 */
-	private TypeRepresentation compileMath(MethodVisitor mv, String operation, List<TypeRepresentation> argList,
-			int lineno) {
+	private TypeRepresentation compileMath(MethodVisitor mv, String operation,
+			List<TypeRepresentation> argList, int lineno, boolean compOp) {
 		Label lc = new Label();
 		mv.visitLabel(lc);
 		mv.visitLineNumber(lineno, lc);
 
 		for (TypeRepresentation tr : argList) {
-			if (tr == TypeRepresentation.NULL || tr.isComplexType() || tr.isCustomType()
-					|| tr.getType() == SystemTypes.FUNCTION || tr.getType() == SystemTypes.ANY
-					|| tr.getType() == SystemTypes.BOOL)
-				throw new TypeException("math operations only allow nonboolean primitives");
+			if ((tr == TypeRepresentation.NULL || tr.isComplexType()
+					|| tr.isCustomType()
+					|| tr.getType() == SystemTypes.FUNCTION
+					|| tr.getType() == SystemTypes.ANY || tr.getType() == SystemTypes.BOOL)
+					&& !(compOp && operation.equals("=")))
+				throw new TypeException(
+						"math operations only allow nonboolean primitives");
 		}
 
 		if (argList.size() == 0) {
 			if (operation.equals("/") || operation.equals("-"))
-				throw new CompilationException("/ or - must have at least one argument");
-			
+				throw new CompilationException(
+						"/ or - must have at least one argument");
+
 			if (operation.equals("+")) {
 				mv.visitInsn(ICONST_0);
 			}
 			if (operation.equals("*")) {
 				mv.visitInsn(ICONST_1);
 			}
+
+			if (compOp)
+				mv.visitInsn(ICONST_1);
+
 			return TypeRepresentation.INT;
 		}
 
@@ -702,9 +776,9 @@ public class DisindentCompiler implements Opcodes {
 			if (operation.equals("*")) {
 				return argList.get(0);
 			}
-			
-			if (operation.equals("-")){
-				switch (argList.get(0).getType()){
+
+			if (operation.equals("-")) {
+				switch (argList.get(0).getType()) {
 				case BYTE:
 					mv.visitInsn(INEG);
 					mv.visitInsn(I2B);
@@ -726,21 +800,36 @@ public class DisindentCompiler implements Opcodes {
 					mv.visitInsn(I2S);
 					break;
 				case STRING:
-					throw new TypeException("math operation other than + does not allow strings");
+					throw new TypeException(
+							"math operation other than + does not allow strings");
 				default:
 					throw new TypeException("");
-				
+
 				}
 				return argList.get(0);
+			}
+
+			if (compOp) {
+				if (argList.get(0).isDoubleMemory())
+					mv.visitInsn(POP2);
+				else
+					mv.visitInsn(POP);
+				mv.visitInsn(ICONST_1);
+				return TypeRepresentation.BOOL;
 			}
 
 			throw new CompilationException("/ requires at least 2 arguments");
 		}
 
-		return doCompileMath(mv, operation, argList);
+		if (compOp && argList.size() > 2)
+			throw new CompilationException(
+					"comparison requires 0 1 or 2 arguments");
+
+		return doCompileMath(mv, operation, argList, compOp);
 	}
 
-	private TypeRepresentation doCompileMath(MethodVisitor mv, String operation, List<TypeRepresentation> argList) {
+	private TypeRepresentation doCompileMath(MethodVisitor mv,
+			String operation, List<TypeRepresentation> argList, boolean compOp) {
 		if (argList.size() == 1)
 			return argList.get(0);
 
@@ -749,11 +838,15 @@ public class DisindentCompiler implements Opcodes {
 
 		if (val1.getType() == SystemTypes.STRING) {
 			if (!operation.equals("+"))
-				throw new TypeException("math operation other than + does not allow strings");
+				throw new TypeException(
+						"math operation other than + does not allow strings");
 			if (val2.getType() != SystemTypes.STRING)
 				throw new TypeException("all arguments must be type of string");
-			mv.visitMethodInsn(INVOKESTATIC, "cz/upol/vanusanik/disindent/runtime/types/StringTools", "concat",
-					"(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;", false);
+			mv.visitMethodInsn(INVOKESTATIC,
+					"cz/upol/vanusanik/disindent/runtime/types/StringTools",
+					"concat",
+					"(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+					false);
 			return TypeRepresentation.STRING;
 		}
 
@@ -762,7 +855,7 @@ public class DisindentCompiler implements Opcodes {
 		case SHORT:
 		case INT:
 			switch (val2.getType()) {
-			
+
 			case BYTE:
 				mv.visitInsn(I2B);
 				break;
@@ -910,7 +1003,7 @@ public class DisindentCompiler implements Opcodes {
 		}
 
 		if (operation.equals("*")) {
-			switch (val2.getType()){
+			switch (val2.getType()) {
 			case BYTE:
 			case SHORT:
 			case INT:
@@ -950,8 +1043,14 @@ public class DisindentCompiler implements Opcodes {
 				break;
 			}
 		}
-		
-		// lastly, we need to change value from int to lower type, if it is actually lower type 
+
+		if (compOp) {
+			compileComparisons(mv, val1, val2, operation);
+			return TypeRepresentation.BOOL;
+		}
+
+		// lastly, we need to change value from int to lower type, if it is
+		// actually lower type
 		switch (val2.getType()) {
 		case BYTE:
 			mv.visitInsn(I2B);
@@ -962,10 +1061,61 @@ public class DisindentCompiler implements Opcodes {
 		default:
 			break;
 		}
-		
-		List<TypeRepresentation> newTrList = new ArrayList<TypeRepresentation>(argList);
-		newTrList.remove(newTrList.size()-1);
-		return doCompileMath(mv, operation, newTrList);
+
+		List<TypeRepresentation> newTrList = new ArrayList<TypeRepresentation>(
+				argList);
+		newTrList.remove(newTrList.size() - 1);
+		return doCompileMath(mv, operation, newTrList, compOp);
+	}
+
+	private void compileComparisons(MethodVisitor mv, TypeRepresentation val1,
+			TypeRepresentation val2, String operation) {
+
+		Label cTrue = new Label();
+		Label cEnd = new Label();
+
+		if (operation.equals("=")
+				&& (val2.isCustomType() || val2.isComplexType())
+				&& (val1.isCustomType() || val1.isComplexType())) {
+			mv.visitJumpInsn(IF_ACMPEQ, cTrue);
+		} else {
+			switch (val2.getType()) {
+			case LONG:
+				mv.visitInsn(LCMP);
+				mv.visitInsn(ICONST_0);
+				break;
+			case DOUBLE:
+				mv.visitInsn(DCMPG);
+				mv.visitInsn(ICONST_0);
+				break;
+			case FLOAT:
+				mv.visitInsn(FCMPG);
+				mv.visitInsn(ICONST_0);
+				break;
+			default:
+				break;
+			}
+
+			switch (val2.getType()) {
+			case BYTE:
+			case SHORT:
+			case INT:
+			case LONG:
+			case DOUBLE:
+			case FLOAT:
+				mv.visitJumpInsn(CompilerUtils.cmpChoice(operation), cTrue);
+				break;
+			default:
+				throw new TypeException("incomparable types " + val2 + ", "
+						+ val1);
+			}
+		}
+
+		mv.visitInsn(ICONST_0);
+		mv.visitJumpInsn(GOTO, cEnd);
+		mv.visitLabel(cTrue);
+		mv.visitInsn(ICONST_1);
+		mv.visitLabel(cEnd);
 	}
 
 	/**
@@ -976,7 +1126,8 @@ public class DisindentCompiler implements Opcodes {
 	 * @param last
 	 * @return
 	 */
-	private TypeRepresentation compileAtom(MethodVisitor mv, AtomContext atom, boolean last) {
+	private TypeRepresentation compileAtom(MethodVisitor mv, AtomContext atom,
+			boolean last) {
 		Label opLabel = new Label();
 		mv.visitLabel(opLabel);
 		mv.visitLineNumber(atom.start.getLine(), opLabel);
@@ -1009,8 +1160,10 @@ public class DisindentCompiler implements Opcodes {
 		if (atom.cast() != null) {
 			// cast operation
 			// returns cast type
-			TypeRepresentation tr = compileOperation(mv, atom.cast().operation_nonl(), true);
-			TypeRepresentation as = CompilerUtils.asType(atom.cast().type(), imports);
+			TypeRepresentation tr = compileOperation(mv, atom.cast()
+					.operation_nonl(), true);
+			TypeRepresentation as = CompilerUtils.asType(atom.cast().type(),
+					imports);
 			CompilerUtils.congruentCast(mv, tr, as);
 			return as;
 		}
@@ -1019,17 +1172,22 @@ public class DisindentCompiler implements Opcodes {
 			// accessor operation
 			// return type of last nested accessor
 			TypeRepresentation varType = null;
-			for (IdentifierContext i : atom.accessor().dottedName().identifier()) {
+			for (IdentifierContext i : atom.accessor().dottedName()
+					.identifier()) {
 				String name = i.getText();
 				if (varType == null) {
 					varType = fc.autoToType(name);
 					CompilerUtils.addLoad(mv, fc.autoToNum(name), varType);
 				} else {
 					if (!varType.isCustomType())
-						throw new TypeException("Object is not typedef at line " + i.start.getLine());
-					FieldSignatures fs = BuildPath.getBuildPath().getFieldSignatures(varType.getFqTypeName());
+						throw new TypeException(
+								"Object is not typedef at line "
+										+ i.start.getLine());
+					FieldSignatures fs = BuildPath.getBuildPath()
+							.getFieldSignatures(varType.getFqTypeName());
 					TypeRepresentation nvarType = fs.getType(name);
-					mv.visitFieldInsn(GETFIELD, Utils.slashify(varType.getFqTypeName()), name,
+					mv.visitFieldInsn(GETFIELD,
+							Utils.slashify(varType.getFqTypeName()), name,
 							nvarType.toJVMTypeString());
 					varType = nvarType;
 				}
@@ -1111,15 +1269,18 @@ public class DisindentCompiler implements Opcodes {
 			if (c.make() != null || c.clone() != null) {
 				// clone or assign
 				boolean clone = c.clone() != null;
-				List<AssignmentsContext> ac = clone ? c.clone().assignments() : c.make().assignments();
-				FqNameContext typeFQName = clone ? c.clone().fqName() : c.make().fqName();
+				List<AssignmentsContext> ac = clone ? c.clone().assignments()
+						: c.make().assignments();
+				FqNameContext typeFQName = clone ? c.clone().fqName() : c
+						.make().fqName();
 
 				String tt = typeFQName.getText();
 				String fqPath = imports.importMapOriginal.get(tt);
 				if (fqPath == null && tt.contains("."))
 					fqPath = tt;
 				if (fqPath == null)
-					throw new MalformedImportDeclarationException("type " + tt + " is not defined");
+					throw new MalformedImportDeclarationException("type " + tt
+							+ " is not defined");
 
 				TypeRepresentation tr = new TypeRepresentation();
 				tr.setType(SystemTypes.CUSTOM);
@@ -1127,24 +1288,31 @@ public class DisindentCompiler implements Opcodes {
 
 				mv.visitTypeInsn(NEW, tr.getJavaClassName());
 				mv.visitInsn(DUP);
-				mv.visitMethodInsn(INVOKESPECIAL, tr.getJavaClassName(), "<init>", "()V", false);
+				mv.visitMethodInsn(INVOKESPECIAL, tr.getJavaClassName(),
+						"<init>", "()V", false);
 
-				FieldSignatures fs = BuildPath.getBuildPath().getFieldSignatures(tr.getFqTypeName());
+				FieldSignatures fs = BuildPath.getBuildPath()
+						.getFieldSignatures(tr.getFqTypeName());
 
 				if (fs == null)
-					throw new MalformedImportDeclarationException("type " + tt + " is not defined");
-				
+					throw new MalformedImportDeclarationException("type " + tt
+							+ " is not defined");
+
 				// clone fields
 				if (clone) {
-					TypeRepresentation cloneType = compileAtom(mv, c.clone().atom(), true);
+					TypeRepresentation cloneType = compileAtom(mv, c.clone()
+							.atom(), true);
 					if (!CompilerUtils.congruentType(mv, tr, cloneType))
-						throw new TypeException("wrong type at line " + c.clone().start.getLine());
+						throw new TypeException("wrong type at line "
+								+ c.clone().start.getLine());
 
 					for (String fname : fs.getFields()) {
 						mv.visitInsn(DUP2);
 						TypeRepresentation varType = fs.getType(fname);
-						mv.visitFieldInsn(GETFIELD, tr.getJavaClassName(), fname, varType.toJVMTypeString());
-						mv.visitFieldInsn(PUTFIELD, tr.getJavaClassName(), fname, varType.toJVMTypeString());
+						mv.visitFieldInsn(GETFIELD, tr.getJavaClassName(),
+								fname, varType.toJVMTypeString());
+						mv.visitFieldInsn(PUTFIELD, tr.getJavaClassName(),
+								fname, varType.toJVMTypeString());
 					}
 
 					mv.visitInsn(POP);
@@ -1160,10 +1328,14 @@ public class DisindentCompiler implements Opcodes {
 						mv.visitInsn(DUP);
 						String fname = assign.identifier().getText();
 						TypeRepresentation varType = fs.getType(fname);
-						TypeRepresentation actualType = compileAtom(mv, assign.atom(), true);
-						if (!CompilerUtils.congruentType(mv, varType, actualType))
-							throw new TypeException("wrong type at line " + assign.start.getLine());
-						mv.visitFieldInsn(PUTFIELD, tr.getJavaClassName(), fname, varType.toJVMTypeString());
+						TypeRepresentation actualType = compileAtom(mv,
+								assign.atom(), true);
+						if (!CompilerUtils.congruentType(mv, varType,
+								actualType))
+							throw new TypeException("wrong type at line "
+									+ assign.start.getLine());
+						mv.visitFieldInsn(PUTFIELD, tr.getJavaClassName(),
+								fname, varType.toJVMTypeString());
 					}
 				}
 
@@ -1177,21 +1349,27 @@ public class DisindentCompiler implements Opcodes {
 				if (fqPath == null && fncName.contains("."))
 					fqPath = fncName;
 				if (fqPath == null)
-					throw new MalformedImportDeclarationException("function " + fncName + " is not defined");
+					throw new MalformedImportDeclarationException("function "
+							+ fncName + " is not defined");
 				String typeName = fqPath.substring(0, fqPath.lastIndexOf('.'));
 				String cp = BuildPath.getBuildPath().getClassPath(typeName);
 
 				if (cp == null)
-					throw new MalformedImportDeclarationException("function " + fncName + " is not defined");
-				
+					throw new MalformedImportDeclarationException("function "
+							+ fncName + " is not defined");
+
 				mv.visitLdcInsn(fncName);
 				mv.visitLdcInsn(Type.getType(Utils.asLName(fqThisType)));
-				mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Class", "getClassLoader", "()Ljava/lang/ClassLoader;",
-						false);
+				mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Class",
+						"getClassLoader", "()Ljava/lang/ClassLoader;", false);
 				mv.visitLdcInsn(cp);
-				mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/ClassLoader", "loadClass",
-						"(Ljava/lang/String;)Ljava/lang/Class;", false);
-				mv.visitMethodInsn(INVOKESTATIC, "cz/upol/vanusanik/disindent/runtime/types/Method", "makeFunction",
+				mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/ClassLoader",
+						"loadClass", "(Ljava/lang/String;)Ljava/lang/Class;",
+						false);
+				mv.visitMethodInsn(
+						INVOKESTATIC,
+						"cz/upol/vanusanik/disindent/runtime/types/Method",
+						"makeFunction",
 						"(Ljava/lang/String;Ljava/lang/Class;)Lcz/upol/vanusanik/disindent/runtime/types/Method;",
 						false);
 				return TypeRepresentation.FUNCTION;
@@ -1200,7 +1378,8 @@ public class DisindentCompiler implements Opcodes {
 
 		if (atom.constList() != null) {
 			// list type
-			TypeRepresentation st = CompilerUtils.asType(atom.constList().type(), imports);
+			TypeRepresentation st = CompilerUtils.asType(atom.constList()
+					.type(), imports);
 			TypeRepresentation tr = new TypeRepresentation();
 			tr.setType(SystemTypes.COMPLEX);
 			tr.setSimpleType(st);
@@ -1209,13 +1388,17 @@ public class DisindentCompiler implements Opcodes {
 				for (AtomContext a : atom.constList().atoms().atom()) {
 					TypeRepresentation atomType = compileAtom(mv, a, true);
 					if (!CompilerUtils.congruentType(mv, atomType, st))
-						throw new TypeException("wrong type at line " + a.start.getLine());
+						throw new TypeException("wrong type at line "
+								+ a.start.getLine());
 				}
 
 				mv.visitInsn(ACONST_NULL);
 
 				for (int i = 0; i < atom.constList().atoms().atom().size(); i++) {
-					mv.visitMethodInsn(INVOKESTATIC, "cz/upol/vanusanik/disindent/runtime/types/DList", "constList",
+					mv.visitMethodInsn(
+							INVOKESTATIC,
+							"cz/upol/vanusanik/disindent/runtime/types/DList",
+							"constList",
 							"(Ljava/lang/Object;Lcz/upol/vanusanik/disindent/runtime/types/DList;)Lcz/upol/vanusanik/disindent/runtime/types/DList;",
 							false);
 				}
