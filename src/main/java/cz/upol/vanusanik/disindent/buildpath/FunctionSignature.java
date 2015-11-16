@@ -132,8 +132,10 @@ public class FunctionSignature implements Serializable {
 			return levelName;
 		
 		TypeRepresentation parameter = parameters.get(0);
-		if (subsignatures.containsKey(parameter))
+		
+		if (subsignatures.containsKey(parameter)){
 			return subsignatures.get(parameter).byParameters(parameters.subList(1, parameters.size()), false);
+		}
 		
 		return null;
 	}

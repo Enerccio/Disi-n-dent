@@ -1,7 +1,14 @@
-use Test2.struct
+use Math
 
-int foo2(a is int, b is int, c is int, d is int)
-	+(a, b, c, d)
+any foo(a is double, b is double)
+	call foo2 with
+		use (a) as any
 
-short foo(a is int, b is int, c is int, d is int)
-	-(use (-(32000)) as short)
+any foo2(a is any)
+	call foo2 with (a, 5)
+
+any foo2(a is any, b is int)
+	use (call + with
+		use (a) as int
+		b
+	) as any

@@ -322,4 +322,8 @@ public class TypeRepresentation implements Serializable {
 		String jvmString = toJVMTypeString();
 		return jvmString.substring(1, jvmString.length()-1);
 	}
+
+	public boolean isDoubleMemory() {
+		return getType()==SystemTypes.LONG || getType()==SystemTypes.DOUBLE;
+	}
 }

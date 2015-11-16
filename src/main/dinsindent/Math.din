@@ -1,0 +1,12 @@
+native package cz.upol.vanusanik.disindent.runtime.natives
+
+% min max
+int native imax(a is int, b is int)
+int native imin(a is int, b is int)
+long native lmax(a is long, b is long)
+long native lmin(a is long, b is long)
+float native fmax(a is float, b is float)
+float native fmin(a is float, b is float)
+double native dmin(a is double, b is double)
+double native dmax(a is double, b is double)
+

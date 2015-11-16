@@ -34,6 +34,7 @@ import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.HeaderConte
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.IdentifierContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.NativeImportContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.OperationContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Operation_nonlContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ParameterContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ProgramContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Simple_opContext;
@@ -200,17 +201,22 @@ public class DisindentCompiler implements Opcodes {
 		for (TypedefContext tc : pc.typedef()) {
 			String typedefName = tc.typedef_header().identifier().getText();
 			String fqName = (packageName.equals("") ? moduleName : packageName + "." + moduleName) + "." + typedefName;
-			imports.addImport(fqName, typedefName);
+			imports.add(typedefName, fqName);
+			imports.add(moduleName + "." + typedefName, fqName);
 		}
 
 		for (FunctionContext fc : pc.function()) {
-			String fqName = packageName.equals("") ? moduleName : packageName + "." + moduleName;
-			imports.addImport(fqName, fc.header().identifier().getText());
+			String fncName = fc.header().identifier().getText();
+			String fqName = (packageName.equals("") ? moduleName : packageName + "." + moduleName) + "." + fncName;
+			imports.add(fncName, fqName);
+			imports.add(moduleName + "." + fncName, fqName);
 		}
 
 		for (NativeImportContext nc : pc.nativeImport()) {
-			String fqName = packageName.equals("") ? moduleName : packageName + "." + moduleName;
-			imports.addImport(fqName, nc.identifier().getText());
+			String fncName = nc.identifier().getText();
+			String fqName = (packageName.equals("") ? moduleName : packageName + "." + moduleName + ".") + fncName;
+			imports.add(fncName, fqName);
+			imports.add(moduleName + "." + fncName, fqName);
 		}
 	}
 
@@ -253,7 +259,7 @@ public class DisindentCompiler implements Opcodes {
 			mv.visitVarInsn(ALOAD, 0);
 			if (fdc.atom() != null) {
 				TypeRepresentation atomType = compileAtom(mv, fdc.atom(), true);
-				if (!CompilerUtils.congruentType(atomType, type))
+				if (!CompilerUtils.congruentType(mv, atomType, type))
 					throw new TypeException("wrong type at line " + fdc.start.getLine());
 			} else {
 				// default value
@@ -389,7 +395,7 @@ public class DisindentCompiler implements Opcodes {
 		for (int i = 0; i < opc - 1; i++)
 			compileOperation(mv, body.operation(i), false);
 		TypeRepresentation ret = compileOperation(mv, body.operation(opc - 1), true);
-		if (!CompilerUtils.congruentType(ret, fc.returnType))
+		if (!CompilerUtils.congruentType(mv, ret, fc.returnType))
 			throw new TypeException("wrong type at line " + body.operation(opc - 1).start.getLine() + " expected " + fc.returnType + ", got " + ret);
 		CompilerUtils.addReturn(mv, fc.returnType);
 	}
@@ -410,15 +416,51 @@ public class DisindentCompiler implements Opcodes {
 		TypeRepresentation ret = null;
 
 		if (operation.head() == null) {
-			ret = compileAtom(mv, operation.atom(), last);
-			if (!last)
-				mv.visitInsn(POP);
+			ret = compileAtom(mv, operation.atom_operation().atom(), last);
+			if (!last) {
+				if (ret.isDoubleMemory())
+					mv.visitInsn(POP2);
+				else
+					mv.visitInsn(POP);
+			}
 		} else {
 			// TODO specific forms added later like if here
 
 			ret = compileOp(mv, operation, last);
 			if (!last)
-				mv.visitInsn(POP);
+				if (ret.isDoubleMemory())
+					mv.visitInsn(POP2);
+				else
+					mv.visitInsn(POP);
+		}
+
+		return ret;
+	}
+	
+	private TypeRepresentation compileOperation(MethodVisitor mv, Operation_nonlContext operation, boolean last) {
+		Label opLabel = new Label();
+		mv.visitLabel(opLabel);
+		mv.visitLineNumber(operation.start.getLine(), opLabel);
+
+		TypeRepresentation ret = null;
+
+		if (operation.head() == null) {
+			ret = compileAtom(mv, operation.atom(), last);
+			if (!last) {
+				if (ret.isDoubleMemory())
+					mv.visitInsn(POP2);
+				else
+					mv.visitInsn(POP);
+			}
+		} else {
+			// TODO specific forms added later like if here
+
+			ret = compileOp(mv, operation, last);
+			if (!last)
+				if (ret.isDoubleMemory())
+					mv.visitInsn(POP2);
+				else
+					mv.visitInsn(POP);
 		}
 
 		return ret;
@@ -440,11 +482,26 @@ public class DisindentCompiler implements Opcodes {
 
 	private TypeRepresentation compileOp(MethodVisitor mv, OperationContext operation, boolean last) {
 		List<TypeRepresentation> argList = new ArrayList<TypeRepresentation>();
-
+		
 		List<OperationContext> opList = new ArrayList<OperationContext>(operation.arguments().operation());
 		for (OperationContext opc : opList) {
-			argList.add(compileOperation(mv, opc, true));
+			TypeRepresentation tr = compileOperation(mv, opc, true);
+			argList.add(tr);
 		}
+		
+
+		return compileStandardFuncCall(mv, argList, operation.head(), last);
+	}
+	
+	private TypeRepresentation compileOp(MethodVisitor mv, Operation_nonlContext operation, boolean last) {
+		List<TypeRepresentation> argList = new ArrayList<TypeRepresentation>();
+		
+		List<OperationContext> opList = new ArrayList<OperationContext>(operation.arguments().operation());
+		for (OperationContext opc : opList) {
+			TypeRepresentation tr = compileOperation(mv, opc, true);
+			argList.add(tr);
+		}
+		
 
 		return compileStandardFuncCall(mv, argList, operation.head(), last);
 	}
@@ -454,7 +511,7 @@ public class DisindentCompiler implements Opcodes {
 		TypeRepresentation returnType = null;
 
 		if (head.mathop() == null)
-			returnType = compileCall(mv, head.identifier().getText(), argList, head.identifier().start.getLine());
+			returnType = compileCall(mv, head.fqName().getText(), argList, head.fqName().start.getLine());
 		else
 			returnType = compileMath(mv, head.mathop().getText(), argList, head.mathop().start.getLine());
 
@@ -473,24 +530,31 @@ public class DisindentCompiler implements Opcodes {
 	private TypeRepresentation compileCall(MethodVisitor mv, String fncName, List<TypeRepresentation> argList,
 			int lineno) {
 		String fqPath = imports.importMapOriginal.get(fncName);
+		if (fqPath == null && fncName.contains("."))
+			fqPath = fncName;
 		if (fqPath == null)
 			throw new MalformedImportDeclarationException("function " + fncName + " is not defined");
 		String typeName = fqPath.substring(0, fqPath.lastIndexOf('.'));
 		String justTypeName = typeName;
 		String packageName = "";
 		if (typeName.contains(".")) {
-			packageName = typeName.substring(0, fqPath.lastIndexOf('.'));
-			justTypeName = typeName.substring(fqPath.lastIndexOf('.') + 1);
+			packageName = typeName.substring(0, typeName.lastIndexOf('.'));
+			justTypeName = typeName.substring(typeName.lastIndexOf('.') + 1);
 		}
-		String cp = BuildPath.getBuildPath().getClassPath(typeName);
-		FunctionSignatures fc = BuildPath.getBuildPath().getSignatures(packageName, justTypeName);
+		
+		String[] split = Utils.splitByLastDot(fncName);
+		fncName = split[split.length-1];
+		
+		BuildPath bp = BuildPath.getBuildPath();
+		String cp = bp.getClassPath(typeName);
+		FunctionSignatures fc = bp.getSignatures(packageName, justTypeName);
 
 		if (fc == null || cp == null)
-			throw new MalformedImportDeclarationException("function " + fncName + " is not defined");
+			throw new MalformedImportDeclarationException("type " + typeName + " is not defined");
 
 		SignatureSpecifier fncSign = fc.findByParameters(fncName, argList);
 		if (fncSign == null)
-			throw new TypeException("function " + fncName + " has no signature for types " + argList);
+			throw new TypeException("function " + fncName + " has no signature for types " + argList + " or does not exist");
 
 		Label lc = new Label();
 		mv.visitLabel(lc);
@@ -850,7 +914,7 @@ public class DisindentCompiler implements Opcodes {
 		if (atom.cast() != null) {
 			// cast operation
 			// returns cast type
-			TypeRepresentation tr = compileAtom(mv, atom.cast().atom(), last);
+			TypeRepresentation tr = compileOperation(mv, atom.cast().operation_nonl(), true);
 			TypeRepresentation as = CompilerUtils.asType(atom.cast().type(), imports);
 			CompilerUtils.congruentCast(mv, tr, as);
 			return as;
@@ -957,6 +1021,8 @@ public class DisindentCompiler implements Opcodes {
 
 				String tt = typeFQName.getText();
 				String fqPath = imports.importMapOriginal.get(tt);
+				if (fqPath == null && tt.contains("."))
+					fqPath = tt;
 				if (fqPath == null)
 					throw new MalformedImportDeclarationException("type " + tt + " is not defined");
 
@@ -970,10 +1036,13 @@ public class DisindentCompiler implements Opcodes {
 
 				FieldSignatures fs = BuildPath.getBuildPath().getFieldSignatures(tr.getFqTypeName());
 
+				if (fs == null)
+					throw new MalformedImportDeclarationException("type " + tt + " is not defined");
+				
 				// clone fields
 				if (clone) {
 					TypeRepresentation cloneType = compileAtom(mv, c.clone().atom(), true);
-					if (!CompilerUtils.congruentType(tr, cloneType))
+					if (!CompilerUtils.congruentType(mv, tr, cloneType))
 						throw new TypeException("wrong type at line " + c.clone().start.getLine());
 
 					for (String fname : fs.getFields()) {
@@ -997,7 +1066,7 @@ public class DisindentCompiler implements Opcodes {
 						String fname = assign.identifier().getText();
 						TypeRepresentation varType = fs.getType(fname);
 						TypeRepresentation actualType = compileAtom(mv, assign.atom(), true);
-						if (!CompilerUtils.congruentType(varType, actualType))
+						if (!CompilerUtils.congruentType(mv, varType, actualType))
 							throw new TypeException("wrong type at line " + assign.start.getLine());
 						mv.visitFieldInsn(PUTFIELD, tr.getJavaClassName(), fname, varType.toJVMTypeString());
 					}
@@ -1010,11 +1079,16 @@ public class DisindentCompiler implements Opcodes {
 				// function pointer
 				String fncName = c.funcptr().funcdesignator().getText();
 				String fqPath = imports.importMapOriginal.get(fncName);
+				if (fqPath == null && fncName.contains("."))
+					fqPath = fncName;
 				if (fqPath == null)
 					throw new MalformedImportDeclarationException("function " + fncName + " is not defined");
 				String typeName = fqPath.substring(0, fqPath.lastIndexOf('.'));
 				String cp = BuildPath.getBuildPath().getClassPath(typeName);
 
+				if (cp == null)
+					throw new MalformedImportDeclarationException("function " + fncName + " is not defined");
+				
 				mv.visitLdcInsn(fncName);
 				mv.visitLdcInsn(Type.getType(Utils.asLName(fqThisType)));
 				mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Class", "getClassLoader", "()Ljava/lang/ClassLoader;",
@@ -1039,7 +1113,7 @@ public class DisindentCompiler implements Opcodes {
 			if (atom.constList().atoms() != null) {
 				for (AtomContext a : atom.constList().atoms().atom()) {
 					TypeRepresentation atomType = compileAtom(mv, a, true);
-					if (!CompilerUtils.congruentType(atomType, st))
+					if (!CompilerUtils.congruentType(mv, atomType, st))
 						throw new TypeException("wrong type at line " + a.start.getLine());
 				}
 

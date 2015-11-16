@@ -150,7 +150,7 @@ function:
 	;
 	
 header:
-	type identifier func_arguments NEWLINE
+	type identifier func_arguments
 	;
 
 func_arguments:
@@ -166,20 +166,33 @@ parameter:
 	;
 	
 block:
-	INDENT operation+ DEDENT
+	NEWLINE INDENT operation+ DEDENT
 	;
 		
 operation:
-	  (head NEWLINE INDENT arguments DEDENT) 
-	| atom NEWLINE
+	  'call' head 'with' arguments
+	| atom_operation
+	;
+	
+operation_nonl:
+	  'call' head 'with' arguments
+	| atom
+	;
+	
+atom_operation:
+	atom NEWLINE
+	;
+	
+arguments:
+	NEWLINE INDENT operation+ DEDENT
 	;
 	
 simple_op:
-	(head '(' simple_arguments? ')')
+	'call' head 'with' '(' simple_arguments? ')'
 	;
 	
 head:
-	identifier|mathop
+	fqName | mathop
 	;
 	
 mathop:
@@ -189,11 +202,7 @@ mathop:
 simple_arguments:
 	(atom ',')* atom
 	;
-	
-arguments:
-	operation*
-	;
-	
+
 atom:
       simple_op
 	| accessor
@@ -203,7 +212,7 @@ atom:
 	;
 	
 cast:
-	'use' '(' atom ')' 'as' type
+	'use' '(' operation_nonl ')' 'as' type
 	;
 	
 accessor:
@@ -245,13 +254,13 @@ funcdesignator:
 	;
 	
 make:
-	('make' fqName 'with' '(' assignments ')') |
-	('make' fqName 'with' INDENT (assignments NEWLINE)* DEDENT)
+	('make' fqName 'with' '(' assignments? ')') |
+	('make' fqName 'with' INDENT (assignments NEWLINE)* assignments DEDENT)
 	;
 
 clone:
-	('clone' fqName '<' atom '>' 'with' '(' assignments ')') |
-	('clone' fqName '<' atom '>' 'with' INDENT (assignments NEWLINE)* DEDENT)
+	('clone' fqName '<' atom '>' 'with' '(' assignments? ')') |
+	('clone' fqName '<' atom '>' 'with' INDENT (assignments NEWLINE)* assignments DEDENT)
 	;
 	
 assignments:

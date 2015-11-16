@@ -241,7 +241,9 @@ public class BuildPath implements Serializable {
 			te.modulePackage = ae.modulePackage;
 			te.slashPackage = ae.slashPackage;
 			te.module = ae;
-			
+			if (ae.typedefs.contains(te.elementDinName))
+				throw new BuildPathException("duplicate typedef name");
+			ae.typedefs.add(te.elementDinName);
 			
 			loadTypedef(te, tc, imports);
 			
@@ -398,6 +400,15 @@ public class BuildPath implements Serializable {
 		AvailableElement ae = bpElements.get(fqName);
 		if (ae != null)
 			return ae.functionSignatures;
+		return null;
+	}
+	
+	public Set<String> getTypedefs(String packageName,
+			String moduleName) {
+		String fqName = packageName.equals("") ? moduleName : packageName + "." + moduleName;
+		AvailableElement ae = bpElements.get(fqName);
+		if (ae != null)
+			return ae.typedefs;
 		return null;
 	}
 

@@ -226,6 +226,10 @@ public class CompilerUtils implements Opcodes {
 				case LONG:
 					mv.visitInsn(L2I);
 					return;
+				case ANY:
+					mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+					mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "intValue", "()I", false);
+					return;
 				default:
 					break;
 				}
@@ -244,6 +248,10 @@ public class CompilerUtils implements Opcodes {
 					return;
 				case LONG:
 					mv.visitInsn(L2D);
+					return;
+				case ANY:
+					mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+					mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "doubleValue", "()D", false);
 					return;
 				default:
 					break;
@@ -264,6 +272,10 @@ public class CompilerUtils implements Opcodes {
 				case LONG:
 					mv.visitInsn(L2F);
 					return;
+				case ANY:
+					mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+					mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "floatValue", "()F", false);
+					return;
 				default:
 					break;
 				}
@@ -283,6 +295,10 @@ public class CompilerUtils implements Opcodes {
 					mv.visitInsn(F2L);
 					return;
 				case LONG:
+					return;
+				case ANY:
+					mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
+					mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "longValue", "()J", false);
 					return;
 				default:
 					break;
@@ -313,7 +329,8 @@ public class CompilerUtils implements Opcodes {
 	 * @param requiredType
 	 * @return
 	 */
-	public static boolean congruentType(TypeRepresentation test,
+	public static boolean congruentType(MethodVisitor mv,
+			TypeRepresentation test,
 			TypeRepresentation requiredType) {
 		if (test == TypeRepresentation.NULL) {
 			if (requiredType.isComplexType() || requiredType.isCustomType()

@@ -1,6 +1,8 @@
 package cz.upol.vanusanik.disindent.buildpath;
 
 import java.io.Serializable;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Represents either typedef or module, either having fields if typedef or functions if module
@@ -35,6 +37,8 @@ class AvailableElement implements Comparable<AvailableElement>, Serializable {
 	FieldSignatures fieldSignatures = new FieldSignatures();
 	/** Functions and their signatures stored here, empty for typedefs */
 	FunctionSignatures functionSignatures = new FunctionSignatures();
+	/** Typedefs stored here, empty for typedefs */
+	Set<String> typedefs = new HashSet<String>();
 	
 	@Override
 	public int compareTo(AvailableElement o) {

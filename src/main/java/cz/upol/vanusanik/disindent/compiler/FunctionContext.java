@@ -37,6 +37,8 @@ public class FunctionContext {
 	public void addLocal(String name, TypeRepresentation type){
 		autos.peek().put(name, type);
 		autoToLocal.peek().put(name, ordering++);
+		if (type.isDoubleMemory())
+			ordering++;
 	}
 	
 	/**
