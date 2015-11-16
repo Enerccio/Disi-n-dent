@@ -13,7 +13,9 @@ public class Test {
 		Object o = newClass.newInstance();
 		System.out.println(o);
 		
-		Object o2 = o.getClass().getMethod("foo", double.class, double.class).invoke(null, 1.0, 2.0);
+		Object o2 = o.getClass().getMethod("foo", boolean.class, double.class, double.class).invoke(null, false, 1.0, 2.0);
+		System.out.println(o2);
+			   o2 = o.getClass().getMethod("foo", boolean.class, double.class, double.class).invoke(null, true, 1.0, 2.0);
 		System.out.println(o2);
 	}
 }

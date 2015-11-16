@@ -172,11 +172,21 @@ block:
 operation:
 	  'call' head 'with' arguments
 	| atom_operation
+	| complex_operation
+	;
+	
+complex_operation:
+	if_operation
+	;
+	
+if_operation:
+	'if' atom NEWLINE INDENT operation operation? DEDENT
 	;
 	
 operation_nonl:
 	  'call' head 'with' arguments
 	| atom
+	| complex_operation
 	;
 	
 atom_operation:

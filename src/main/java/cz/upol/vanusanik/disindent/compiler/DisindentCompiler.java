@@ -24,6 +24,7 @@ import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.AssignmentC
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.AssignmentsContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.AtomContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.BlockContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Complex_operationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ConstArgContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Field_declarationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqModuleNameContext;
@@ -32,6 +33,7 @@ import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FunctionCon
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.HeadContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.HeaderContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.IdentifierContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.If_operationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.NativeImportContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.OperationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Operation_nonlContext;
@@ -133,7 +135,7 @@ public class DisindentCompiler implements Opcodes {
 			compileNewType(tdc);
 		}
 
-		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 		cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, fqThisType, null, "java/lang/Object", null);
 		cw.visitSource(filename, null);
 
@@ -231,7 +233,7 @@ public class DisindentCompiler implements Opcodes {
 				+ Utils.asTypedefJavaName(typedefName);
 		String fqJavaPath = fqThisType + "$" + Utils.asTypedefJavaName(typedefName);
 
-		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 		cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, fqJavaPath, null, "java/lang/Object", null);
 		cw.visitSource(filename, null);
 
@@ -416,6 +418,11 @@ public class DisindentCompiler implements Opcodes {
 		TypeRepresentation ret = null;
 
 		if (operation.head() == null) {
+			// TODO specific forms added later like if here
+			if (operation.complex_operation() != null){
+				return compileComplexOperation(mv, operation.complex_operation(), last);
+			}
+			
 			ret = compileAtom(mv, operation.atom_operation().atom(), last);
 			if (!last) {
 				if (ret.isDoubleMemory())
@@ -424,8 +431,6 @@ public class DisindentCompiler implements Opcodes {
 					mv.visitInsn(POP);
 			}
 		} else {
-			// TODO specific forms added later like if here
-
 			ret = compileOp(mv, operation, last);
 			if (!last)
 				if (ret.isDoubleMemory())
@@ -437,6 +442,13 @@ public class DisindentCompiler implements Opcodes {
 		return ret;
 	}
 	
+	/**
+	 * compiles operation
+	 * @param mv
+	 * @param operation
+	 * @param last
+	 * @return
+	 */
 	private TypeRepresentation compileOperation(MethodVisitor mv, Operation_nonlContext operation, boolean last) {
 		Label opLabel = new Label();
 		mv.visitLabel(opLabel);
@@ -445,6 +457,11 @@ public class DisindentCompiler implements Opcodes {
 		TypeRepresentation ret = null;
 
 		if (operation.head() == null) {
+			// TODO specific forms added later like if here
+			if (operation.complex_operation() != null){
+				return compileComplexOperation(mv, operation.complex_operation(), last);
+			}
+			
 			ret = compileAtom(mv, operation.atom(), last);
 			if (!last) {
 				if (ret.isDoubleMemory())
@@ -453,8 +470,6 @@ public class DisindentCompiler implements Opcodes {
 					mv.visitInsn(POP);
 			}
 		} else {
-			// TODO specific forms added later like if here
-
 			ret = compileOp(mv, operation, last);
 			if (!last)
 				if (ret.isDoubleMemory())
@@ -466,6 +481,72 @@ public class DisindentCompiler implements Opcodes {
 		return ret;
 	}
 
+	/**
+	 * Compiles complex operation element (if, etc)
+	 * @param mv
+	 * @param complex_operation
+	 * @param last
+	 * @return
+	 */
+	private TypeRepresentation compileComplexOperation(MethodVisitor mv,
+			Complex_operationContext complex_operation, boolean last) {
+		
+		if (complex_operation.if_operation() != null)
+			return compileIf(mv, complex_operation.if_operation(), last);
+		
+		return null;
+	}
+
+	/**
+	 * Compiles if
+	 * @param mv
+	 * @param if_operation
+	 * @param last
+	 * @return
+	 */
+	private TypeRepresentation compileIf(MethodVisitor mv,
+			If_operationContext if_operation, boolean last) {
+		boolean hasElse = if_operation.operation().size() == 2;
+		
+		Label ifStart = new Label();
+		Label ifEnd = new Label();
+		Label ifElse = new Label();
+		
+		mv.visitLabel(ifStart);
+		mv.visitLineNumber(if_operation.start.getLine(), ifStart);
+		
+		TypeRepresentation tr = compileAtom(mv, if_operation.atom(), true);
+		if (!CompilerUtils.congruentType(mv, tr, TypeRepresentation.BOOL))
+			throw new TypeException("if test expression requires bool type");
+		mv.visitJumpInsn(IFEQ, hasElse ? ifElse : ifEnd);
+		
+		
+		OperationContext trueContext = if_operation.operation(0);
+		TypeRepresentation ifType = compileOperation(mv, trueContext, true);
+		TypeRepresentation elseType = ifType;
+		
+		if (hasElse) {
+			mv.visitJumpInsn(GOTO, ifEnd);
+			mv.visitLabel(ifElse);
+			elseType = compileOperation(mv, if_operation.operation(1), true);
+		}
+		
+		mv.visitLabel(ifEnd);
+		mv.visitLineNumber(if_operation.stop.getLine(), ifEnd);
+		
+		if (!ifType.equals(elseType))
+			throw new TypeException("types must match for if/else branches");
+		
+		return ifType;
+	}
+
+	/**
+	 * Compiles simple operation (call or math operation)
+	 * @param mv
+	 * @param simple_op
+	 * @param last
+	 * @return
+	 */
 	private TypeRepresentation compileSimpleOp(MethodVisitor mv, Simple_opContext simple_op, boolean last) {
 		List<TypeRepresentation> argList = new ArrayList<TypeRepresentation>();
 
@@ -480,6 +561,13 @@ public class DisindentCompiler implements Opcodes {
 
 	}
 
+	/**
+	 * Compiles operation (call or math operation)
+	 * @param mv
+	 * @param operation
+	 * @param last
+	 * @return
+	 */
 	private TypeRepresentation compileOp(MethodVisitor mv, OperationContext operation, boolean last) {
 		List<TypeRepresentation> argList = new ArrayList<TypeRepresentation>();
 		
@@ -493,6 +581,13 @@ public class DisindentCompiler implements Opcodes {
 		return compileStandardFuncCall(mv, argList, operation.head(), last);
 	}
 	
+	/**
+	 * Same as other compileOp, but on different syntactical element with same semantics
+	 * @param mv
+	 * @param operation
+	 * @param last
+	 * @return
+	 */
 	private TypeRepresentation compileOp(MethodVisitor mv, Operation_nonlContext operation, boolean last) {
 		List<TypeRepresentation> argList = new ArrayList<TypeRepresentation>();
 		

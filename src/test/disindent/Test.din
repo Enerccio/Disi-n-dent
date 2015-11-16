@@ -1,14 +1,6 @@
-use Math
 
-any foo(a is double, b is double)
-	call foo2 with
-		use (a) as any
 
-any foo2(a is any)
-	call foo2 with (a, 5)
-
-any foo2(a is any, b is int)
-	use (call + with
-		use (a) as int
+double foo(test is bool, a is double, b is double)
+	if test
+		a
 		b
-	) as any
