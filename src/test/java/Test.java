@@ -13,7 +13,7 @@ public class Test {
 		Object o = newClass.newInstance();
 		System.out.println(o);
 		
-		Object o2 = o.getClass().getMethod("foo", int.class).invoke(null, -1);
+		Object o2 = o.getClass().getMethod("foo", int.class, int.class, int.class, int.class).invoke(null, 0, 1, 2, 3);
 		System.out.println(o2);
 	}
 }

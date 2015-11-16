@@ -1,8 +1,7 @@
 use Test2.struct
 
-struct foo(a is int)
-	ftest(a)
-		
+int foo2(a is int, b is int, c is int, d is int)
+	+(a, b, c, d)
 
-struct ftest(a is int)
-	make struct with (a is a, b is 'Hello, world!')
+short foo(a is int, b is int, c is int, d is int)
+	-(use (-(32000)) as short)
