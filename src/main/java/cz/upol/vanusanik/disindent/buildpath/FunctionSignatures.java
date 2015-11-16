@@ -52,4 +52,8 @@ public class FunctionSignatures implements Serializable {
 	public List<SignatureSpecifier> findSpecifierByReturn(String name, TypeRepresentation ret){
 		return functions.get(name).byReturn(ret, null);
 	}
+	
+	public SignatureSpecifier findByParameters(String name, List<TypeRepresentation> parameters){
+		return functions.get(name).byParameters(parameters, true);
+	}
 }

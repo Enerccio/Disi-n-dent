@@ -29,12 +29,15 @@ import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Field_decla
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqModuleNameContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqNameContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FunctionContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.HeadContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.HeaderContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.IdentifierContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.MathopContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.NativeImportContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.OperationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ParameterContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ProgramContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Simple_opContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypedefContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.UsesContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Using_declarationContext;
@@ -324,7 +327,7 @@ public class DisindentCompiler implements Opcodes {
 		}
 
 		FunctionSignatures fcs = BuildPath.getBuildPath().getSignatures(
-				packageName, moduleName, nc.identifier().getText());
+				packageName, moduleName);
 		SignatureSpecifier sign = fcs.getSpecifier(nc.identifier().getText(),
 				typeList);
 
@@ -379,7 +382,7 @@ public class DisindentCompiler implements Opcodes {
 		}
 
 		FunctionSignatures fcs = BuildPath.getBuildPath().getSignatures(
-				packageName, moduleName, header.identifier().getText());
+				packageName, moduleName);
 		SignatureSpecifier sign = fcs.getSpecifier(header.identifier().getText(),
 				typeList);
 
@@ -411,7 +414,10 @@ public class DisindentCompiler implements Opcodes {
 		int opc = body.operation().size();
 		for (int i=0; i<opc-1; i++)
 			compileOperation(mv, body.operation(i), false);
-		compileOperation(mv, body.operation(opc-1), true);
+		TypeRepresentation ret = compileOperation(mv, body.operation(opc-1), true);
+		if (!CompilerUtils.congruentType(ret, fc.returnType))
+			throw new TypeException("wrong type at line " + body.operation(opc-1).start.getLine());
+		CompilerUtils.addReturn(mv, fc.returnType);
 	}
 
 	/**
@@ -420,7 +426,7 @@ public class DisindentCompiler implements Opcodes {
 	 * @param operation
 	 * @param last whether the operation is last on stack 
 	 */
-	private void compileOperation(MethodVisitor mv, OperationContext operation,
+	private TypeRepresentation compileOperation(MethodVisitor mv, OperationContext operation,
 			boolean last) {
 		Label opLabel = new Label();
 		mv.visitLabel(opLabel);
@@ -430,15 +436,101 @@ public class DisindentCompiler implements Opcodes {
 		
 		if (operation.head() == null){
 			ret = compileAtom(mv, operation.atom(), last);
+			if (!last)
+				mv.visitInsn(POP);
 		} else {
+			// TODO specific forms added later like if here
 			
+			ret = compileOp(mv, operation, last);
+			if (!last)
+				mv.visitInsn(POP);
 		}
 		
-		if (last){
-			if (!CompilerUtils.congruentType(ret, fc.returnType))
-				throw new TypeException("wrong type at line " + operation.start.getLine());
-			CompilerUtils.addReturn(mv, fc.returnType);
+		return ret;
+	}
+
+	private TypeRepresentation compileSimpleOp(MethodVisitor mv, Simple_opContext simple_op, boolean last) {
+		List<TypeRepresentation> argList = new ArrayList<TypeRepresentation>();
+		
+		for (AtomContext a : simple_op.simple_arguments().atom()){
+			argList.add(compileAtom(mv, a, true));
 		}
+		
+		return compileStandardFuncCall(mv, argList, simple_op.head(), last);
+		
+	}
+
+	private TypeRepresentation compileOp(MethodVisitor mv, OperationContext operation, boolean last) {
+		List<TypeRepresentation> argList = new ArrayList<TypeRepresentation>();
+		
+		for (OperationContext opc : operation.arguments().operation()){
+			argList.add(compileOperation(mv, opc, true));
+		}		
+		
+		return compileStandardFuncCall(mv, argList, operation.head(), last);
+	}
+
+	private TypeRepresentation compileStandardFuncCall(MethodVisitor mv, List<TypeRepresentation> argList, HeadContext head, boolean last) {
+		TypeRepresentation returnType = null;
+		
+		if (head.mathop() == null)
+			returnType = compileCall(mv, head.identifier().getText(), argList, head.identifier().start.getLine());
+		else
+			returnType = compileMath(mv, head.mathop(), argList, head.mathop().start.getLine());
+		
+		return returnType;
+	}
+
+	/**
+	 * Compiles function call
+	 * @param mv
+	 * @param fncName
+	 * @param argList
+	 * @param lineno
+	 * @return
+	 */
+	private TypeRepresentation compileCall(MethodVisitor mv, String fncName, List<TypeRepresentation> argList, int lineno) {
+		String fqPath = imports.importMapOriginal.get(fncName);
+		if (fqPath == null)
+			throw new MalformedImportDeclarationException("function " + fncName
+					+ " is not defined");
+		String typeName = fqPath.substring(0, fqPath.lastIndexOf('.'));
+		String justTypeName = typeName;
+		String packageName = "";
+		if (typeName.contains(".")){
+			packageName = typeName.substring(0, fqPath.lastIndexOf('.'));
+			justTypeName = typeName.substring(fqPath.lastIndexOf('.')+1);
+		}
+		String cp = BuildPath.getBuildPath().getClassPath(typeName);
+		FunctionSignatures fc = BuildPath.getBuildPath().getSignatures(packageName, justTypeName);
+		
+		if (fc == null || cp == null)
+			throw new MalformedImportDeclarationException("function " + fncName
+					+ " is not defined");
+		
+		SignatureSpecifier fncSign = fc.findByParameters(fncName, argList);
+		if (fncSign == null)
+			throw new TypeException("function " + fncName + " has no signature for types " + argList);
+			
+		Label lc = new Label();
+		mv.visitLabel(lc);
+		mv.visitLineNumber(lineno, lc);
+		mv.visitMethodInsn(INVOKESTATIC, cp, fncName, fncSign.javaSignature, false);
+		
+		return fncSign.retType;
+	}
+
+	/**
+	 * Compiles math operation
+	 * @param mv
+	 * @param mathop
+	 * @param argList
+	 * @param lineno
+	 * @return
+	 */
+	private TypeRepresentation compileMath(MethodVisitor mv, MathopContext mathop, List<TypeRepresentation> argList, int lineno) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	/**
@@ -449,12 +541,13 @@ public class DisindentCompiler implements Opcodes {
 	 * @return
 	 */
 	private TypeRepresentation compileAtom(MethodVisitor mv, AtomContext atom, boolean last) {
-		if (!last)
-			return null; // atoms are ignored if not last
-		
 		Label opLabel = new Label();
 		mv.visitLabel(opLabel);
 		mv.visitLineNumber(atom.start.getLine(), opLabel);
+		
+		if (atom.simple_op() != null){
+			return compileSimpleOp(mv, atom.simple_op(), last);
+		}
 		
 		if (atom.getText().equals("none")){
 			// null

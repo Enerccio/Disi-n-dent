@@ -170,9 +170,12 @@ block:
 	;
 		
 operation:
-	  (head '(' simple_arguments? ')' NEWLINE) 
-	| (head NEWLINE INDENT arguments DEDENT) 
+	  (head NEWLINE INDENT arguments DEDENT) 
 	| atom NEWLINE
+	;
+	
+simple_op:
+	(head '(' simple_arguments? ')')
 	;
 	
 head:
@@ -192,7 +195,8 @@ arguments:
 	;
 	
 atom:
-	  accessor
+      simple_op
+	| accessor
 	| constArg
 	| constList
 	| cast

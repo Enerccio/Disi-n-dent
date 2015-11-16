@@ -3,7 +3,7 @@ package cz.upol.vanusanik.disindent.runtime.types;
 import java.util.Arrays;
 
 /**
- * Wraps java.lang.reflect.Method into custom Method class, due to having multiple return types
+ * Wraps java.lang.reflect.Method into custom Method class
  * @author Peter Vanusanik
  *
  */
@@ -15,15 +15,14 @@ public class Method {
 	private Class<?> clazz;
 	
 	/**
-	 * Returns method for specified return type and parameters
-	 * @param returnType
+	 * Returns method for specified parameters
 	 * @param parameters
 	 * @return
 	 * @throws NoSuchMethodException
 	 */
-	public java.lang.reflect.Method getMethod(Class<?> returnType, Class<?>... parameters) throws NoSuchMethodException{
+	public java.lang.reflect.Method getMethod(Class<?>... parameters) throws NoSuchMethodException{
 		for (java.lang.reflect.Method m : clazz.getMethods()){
-			if (m.getName().equals(methodName) && m.getReturnType().equals(returnType)){
+			if (m.getName().equals(methodName)){
 				if (Arrays.equals(m.getParameters(), parameters))
 					return m;
 			}

@@ -1,4 +1,8 @@
 use Test2.struct
 
 struct foo(a is int)
+	ftest(a)
+		
+
+struct ftest(a is int)
 	make struct with (a is a, b is 'Hello, world!')

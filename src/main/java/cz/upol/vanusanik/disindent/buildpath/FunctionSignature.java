@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import cz.upol.vanusanik.disindent.errors.CompilationException;
 import cz.upol.vanusanik.disindent.errors.MethodAlreadyExistException;
 
 /**
@@ -28,12 +29,16 @@ public class FunctionSignature implements Serializable {
 		public final String functionName;
 		public final String javaSignature;
 		public final List<TypeRepresentation> specList;
+		public final List<TypeRepresentation> parameters;
+		public final TypeRepresentation retType;
 		
 		public SignatureSpecifier(String functionName, String javaSignature, List<TypeRepresentation> specList) {
 			super();
 			this.functionName = functionName;
 			this.javaSignature = javaSignature;
 			this.specList = Collections.unmodifiableList(new ArrayList<TypeRepresentation>(specList));
+			this.parameters = Collections.unmodifiableList(new ArrayList<TypeRepresentation>(specList.subList(1, specList.size())));
+			this.retType = specList.get(0);
 		}
 	}
 	
@@ -70,9 +75,11 @@ public class FunctionSignature implements Serializable {
 		if (subsignatures.containsKey(tr) && sublist.size() == 0)
 			throw new MethodAlreadyExistException();
 		
-		if (retSign == null)
+		if (retSign == null){
 			retSign = tr.toJVMTypeString();
-		else
+			if (subsignatures.size() == 1 && !subsignatures.containsKey(tr))
+				throw new CompilationException("multiple return types");
+		} else
 			signSpec = signSpec + tr.toJVMTypeString();
 		
 		if (!subsignatures.containsKey(tr))
@@ -115,5 +122,19 @@ public class FunctionSignature implements Serializable {
 					subsignatures.get(tr).byReturn(ret, list);
 		}
 		return list;
+	}
+
+	public SignatureSpecifier byParameters(List<TypeRepresentation> parameters, boolean first) {
+		if (first){
+			return subsignatures.values().iterator().next().byParameters(parameters, false);
+		}
+		if (parameters.size() == 0)
+			return levelName;
+		
+		TypeRepresentation parameter = parameters.get(0);
+		if (subsignatures.containsKey(parameter))
+			return subsignatures.get(parameter).byParameters(parameters.subList(1, parameters.size()), false);
+		
+		return null;
 	}
 }
