@@ -1,0 +1,119 @@
+native package cz.upol.vanusanik.disindent.runtime.natives
+
+% min max
+int imax(a is int, b is int)
+	if >=(a, b) 
+		a
+		b
+		
+int imin(a is int, b is int)
+	if >(a, b) 
+		b
+		a
+		
+long lmax(a is long, b is long)
+	if >=(a, b) 
+		a
+		b
+
+long lmin(a is long, b is long)
+	if >(a, b) 
+		b
+		a
+
+float fmax(a is float, b is float)
+	if >=(a, b) 
+		a
+		b
+
+float fmin(a is float, b is float)
+	if >(a, b) 
+		b
+		a
+
+double dmax(a is double, b is double)
+	if >=(a, b) 
+		a
+		b
+
+double dmin(a is double, b is double)
+	if >(a, b) 
+		b
+		a
+		
+% constants
+
+double pi()
+	3.141592653589793
+	
+double e()
+	2.718281828459045
+
+% delegates	
+int    native mod (i1 is int, i2 is int)
+int    native get_exponent(d is double)
+
+long   native lshift(arg is long, amount is int)
+long   native lshift(arg is int, amount is int)
+long   native rshift(arg is long, amount is int)
+long   native rshift(arg is int, amount is int)
+long   native rushift(arg is long, amount is int)
+long   native rushift(arg is int, amount is int)   
+
+byte   native band(b1 is byte, b2 is byte)
+byte   native bor(b1 is byte, b2 is byte)
+byte   native bxor(b1 is byte, b2 is byte)
+byte   native bneg(b1 is byte)
+
+short  native sand(s1 is short, s2 is short)
+short  native sor(s1 is short, s2 is short)
+short  native sxor(s1 is short, s2 is short)
+short  native sneg(s1 is short)
+
+int    native iand(i1 is int, i2 is int)
+int    native ior(i1 is int, i2 is int)
+int    native ixor(i1 is int, i2 is int)
+int    native ineg(i1 is int)
+
+long   native land(l1 is long, l2 is long)
+long   native lor(l1 is long, l2 is long)
+long   native lxor(l1 is long, l2 is long)
+long   native lneg(l1 is long)
+
+double native dmod(d1 is double, d2 is double)
+double native sin(d is double)
+double native cos(d is double)
+double native tan(d is double)
+double native asin(d is double)
+double native acos(d is double)
+double native atan(d is double)
+double native to_radians(d is double)
+double native to_degrees(d is double)
+double native exp(d is double)
+double native log(d is double)
+double native log10(d is double)
+double native sqrt(d is double)
+double native cbrt(d is double)
+double native ieee_remainder(d1 is double, d2 is double)
+double native ceil(d is double)
+double native floor(d is double)
+double native rint(d is double)
+double native atan2(d1 is double, d2 is double)
+double native pow(d1 is double, d2 is double)
+double native round(d is double)
+double native random()
+double native abs(d is double)
+double native signum(d is double)
+double native sinh(d is double)
+double native cosh(d is double)
+double native tanh(d is double)
+double native hypot(d1 is double, d2 is double)
+double native expm1(d is double)
+double native log1p(d is double)
+double native copy_sign(d1 is double, d2 is double)
+double native next_after(d1 is double, d2 is double)
+double native next_up(d is double)
+double native next_down(d is double)
+double native scalb(d is double, i is int)
+
+

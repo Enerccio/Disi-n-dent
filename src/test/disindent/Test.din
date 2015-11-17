@@ -1,4 +1,4 @@
+use Math
 
-
-function foo(test is bool, a is double, b is double)
-	&foo
+double foo(test is bool, a is double, b is double)
+	Math.hypot(a, b)

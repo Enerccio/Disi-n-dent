@@ -116,6 +116,8 @@ public class NativeGenerator {
 		exportDir.mkdirs();
 		
 		File exportFile = new File(exportDir, name+".java");
+		if (exportFile.exists() || exportFile.length() != 0)
+			return; // ignore existing file to not overwrite
 		FileUtils.write(exportFile, clazz);
 	}
 

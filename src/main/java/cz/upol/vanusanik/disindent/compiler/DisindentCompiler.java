@@ -1,9 +1,11 @@
 package cz.upol.vanusanik.disindent.compiler;
 
+import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.objectweb.asm.*;
 import org.objectweb.asm.util.CheckClassAdapter;
@@ -177,6 +179,8 @@ public class DisindentCompiler implements Opcodes {
 		} catch (Throwable t) {
 			t.printStackTrace();
 		}
+		
+		exportToTmp(classData, fqThisType);
 
 		return classData;
 	}
@@ -310,8 +314,23 @@ public class DisindentCompiler implements Opcodes {
 		} catch (Throwable t) {
 			t.printStackTrace();
 		}
+		
+		exportToTmp(classData, fqJavaPath);
 
 		cl.addClass(fqJavaPath, classData);
+	}
+
+	private void exportToTmp(byte[] classData, String fqName) {
+		File f = new File("tmp");
+		if (f.exists()){
+			File expF = new File(f, fqName+".class");
+			expF.getParentFile().mkdirs();
+			try {
+				FileUtils.writeByteArrayToFile(expF, classData);
+			} catch (Exception e){
+				
+			}
+		}
 	}
 
 	/**

@@ -339,7 +339,36 @@ public class CompilerUtils implements Opcodes {
 					|| requiredType.getType() == SystemTypes.STRING)
 				return true;
 		}
-		return test.equals(requiredType);
+		boolean eqType = test.equals(requiredType);
+		if (eqType)
+			return true;
+		
+		if (requiredType == TypeRepresentation.LONG){
+			switch (test.getType()){
+			case BOOL:
+			case BYTE:
+			case INT:
+			case SHORT:
+				mv.visitLdcInsn(I2L);
+				return true;
+			default:
+				break;
+			
+			}
+		}
+		
+		if (requiredType == TypeRepresentation.DOUBLE){
+			switch (test.getType()){
+			case FLOAT:
+				
+				return true;
+			default:
+				break;
+			
+			}
+		}
+		
+		return false;
 	}
 
 	/**
