@@ -29,6 +29,7 @@ import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.BlockContex
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Complex_operationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ConstArgContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Field_declarationContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.For_operationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqModuleNameContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqNameContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FunctionContext;
@@ -79,8 +80,10 @@ public class DisindentCompiler implements Opcodes {
 	private String nativePackage = "";
 	/** Function context for actively compiled function */
 	private cz.upol.vanusanik.disindent.compiler.FunctionContext fc;
-	/** */
+	/** fully qualified java type name */
 	private String fqThisType;
+	/** used for creating tempvars */
+	private int gensymCount = 0;
 
 	/**
 	 * Commence the compilation of the loaded module. Will return classes
@@ -428,7 +431,12 @@ public class DisindentCompiler implements Opcodes {
 		Label start = new Label();
 		mv.visitLineNumber(header.start.getLine(), start);
 
-		compileBody(mv, body);
+		TypeRepresentation ret = compileBlock(mv, body);
+		if (!CompilerUtils.congruentType(mv, ret, this.fc.returnType))
+			throw new TypeException("wrong type at line "
+					+ body.operation(body.operation().size() - 1).start.getLine() + " expected "
+					+ this.fc.returnType + ", got " + ret);
+		CompilerUtils.addReturn(mv, this.fc.returnType);
 
 		this.fc.pop(mv, start);
 		mv.visitMaxs(0, 0);
@@ -443,22 +451,22 @@ public class DisindentCompiler implements Opcodes {
 	 * 
 	 * @param mv
 	 * @param body
+	 * @return 
 	 */
-	private void compileBody(MethodVisitor mv, BlockContext body) {
-		Label bodyLabel = new Label();
-		mv.visitLabel(bodyLabel);
-		mv.visitLineNumber(body.start.getLine(), bodyLabel);
-
+	private TypeRepresentation compileBlock(MethodVisitor mv, BlockContext body) {
+		Label blockLabel = new Label();
+		mv.visitLabel(blockLabel);
+		mv.visitLineNumber(body.start.getLine(), blockLabel);
+		
+		fc.push();
 		int opc = body.operation().size();
 		for (int i = 0; i < opc - 1; i++)
 			compileOperation(mv, body.operation(i), false);
 		TypeRepresentation ret = compileOperation(mv, body.operation(opc - 1),
 				true);
-		if (!CompilerUtils.congruentType(mv, ret, fc.returnType))
-			throw new TypeException("wrong type at line "
-					+ body.operation(opc - 1).start.getLine() + " expected "
-					+ fc.returnType + ", got " + ret);
-		CompilerUtils.addReturn(mv, fc.returnType);
+		fc.pop(mv, blockLabel);
+		
+		return ret;
 	}
 
 	/**
@@ -516,8 +524,175 @@ public class DisindentCompiler implements Opcodes {
 
 		if (complex_operation.if_operation() != null)
 			return compileIf(mv, complex_operation.if_operation(), last);
-
+		if (complex_operation.for_operation() != null)
+			return compileFor(mv, complex_operation.for_operation(), last);
+		
 		return null;
+	}
+
+	private TypeRepresentation compileFor(MethodVisitor mv,
+			For_operationContext fo, boolean last) {
+		fc.push();
+		
+		Label loopStart = new Label();
+		Label forInit = new Label();
+		Label bodyLabel = new Label();
+		Label forEndOfComp = new Label();
+		Label forTest = new Label();
+		Label forMod = new Label();
+		Label forEnd = new Label();
+		String operation = "";
+		String tempvar1 = "for$" + gensymCount++;
+		String tempvar2 = "for$" + gensymCount++;
+		TypeRepresentation ret = null;
+		
+		AtomContext initIterator = fo.atom(0);
+		AtomContext testIterator = fo.atom(1);
+		AtomContext modIterator  = fo.atom(2);
+		
+		if (fo.forop() != null)
+			operation = fo.forop().getText();
+		
+		// loop start goto
+		mv.visitLabel(loopStart);
+		mv.visitLineNumber(fo.start.getLine(), loopStart);
+		mv.visitJumpInsn(GOTO, forInit);
+		
+		// loop body
+		mv.visitLabel(bodyLabel);
+		mv.visitLineNumber(fo.block().start.getLine(), bodyLabel);
+		TypeRepresentation bodyType = compileBlock(mv, fo.block());
+		mv.visitJumpInsn(GOTO, forEndOfComp); // bodyType is on stack
+		
+		// loop start
+		mv.visitLabel(forInit);
+		mv.visitLineNumber(fo.parameter().start.getLine(), forInit);
+		// initialize iterator variable
+		TypeRepresentation iteratorType = CompilerUtils.asType(fo.parameter().type(), imports);
+		String iterator = fo.parameter().identifier().getText();
+		fc.addLocal(iterator, iteratorType);
+		TypeRepresentation initType = compileAtom(mv, initIterator, true);
+		if (!CompilerUtils.congruentType(mv, initType, iteratorType))
+			throw new TypeException("wrong type for initializer");
+		CompilerUtils.addStore(mv, fc.autoToNum(iterator), iteratorType);
+		// initialize end of body operation
+		switch (operation){
+		case "sum":
+			if (!(bodyType.isNumber()) && !(bodyType.getType() == SystemTypes.STRING))
+				throw new TypeException("for for sum you need a number type or string");
+			fc.addLocal(tempvar1, bodyType);
+			if (bodyType.isNumber()){
+				CompilerUtils.defaultValue(mv, bodyType);
+				CompilerUtils.addStore(mv, fc.autoToNum(tempvar1), bodyType);
+			} else {
+				mv.visitLdcInsn("");
+				CompilerUtils.addStore(mv, fc.autoToNum(tempvar1), bodyType);
+			}
+			break;
+		case "avg":
+			if (!(bodyType.isNumber()))
+				throw new TypeException("for for sum you need a number type or string");
+			fc.addLocal(tempvar1, bodyType);
+			CompilerUtils.defaultValue(mv, bodyType);
+			CompilerUtils.addStore(mv, fc.autoToNum(tempvar1), bodyType);
+			fc.addLocal(tempvar2, TypeRepresentation.INT);
+			mv.visitLdcInsn(0);
+			CompilerUtils.addStore(mv, fc.autoToNum(tempvar2), TypeRepresentation.INT);
+			break;
+		case "app":
+			// TODO
+			break;
+		case "rapp":
+			// TODO
+			break;
+		case "":
+		default:
+			fc.addLocal(tempvar1, bodyType);
+			CompilerUtils.defaultValue(mv, bodyType);
+			CompilerUtils.addStore(mv, fc.autoToNum(tempvar1), bodyType);
+		}
+		mv.visitJumpInsn(GOTO, forTest);
+		
+		// loop end of body
+		mv.visitLabel(forEndOfComp);
+		switch (operation){
+		case "avg":
+			mv.visitIincInsn(fc.autoToNum(tempvar2), 1);
+		case "sum":
+			CompilerUtils.addLoad(mv, fc.autoToNum(tempvar1), bodyType);
+			List<TypeRepresentation> trL = new ArrayList<TypeRepresentation>();
+			trL.add(bodyType);
+			trL.add(bodyType);
+			compileMath(mv, "+", trL, fo.block().start.getLine(), false);
+			CompilerUtils.addStore(mv, fc.autoToNum(tempvar1), bodyType);
+			break;
+		case "app":
+			// TODO
+			break;
+		case "rapp":
+			// TODO
+			break;
+		case "":
+		default:
+			CompilerUtils.addStore(mv, fc.autoToNum(tempvar1), bodyType);
+		}
+		// loop modify iterator
+		mv.visitLabel(forMod);
+		mv.visitLineNumber(modIterator.start.getLine(), forMod);
+		TypeRepresentation modType = compileAtom(mv, modIterator, true);
+		if (!CompilerUtils.congruentType(mv, modType, iteratorType))
+			throw new TypeException("wrong type for iterator modificator");
+		CompilerUtils.addStore(mv, fc.autoToNum(iterator), iteratorType);
+		
+		// loop test
+		mv.visitLabel(forTest);
+		mv.visitLineNumber(testIterator.start.getLine(), forTest);
+		TypeRepresentation testType = compileAtom(mv, testIterator, true);
+		if (!CompilerUtils.congruentType(mv, testType, TypeRepresentation.BOOL))
+			throw new TypeException("for test must be bool type");
+		mv.visitJumpInsn(IFEQ, forEnd); // no value on stack
+		mv.visitJumpInsn(GOTO, bodyLabel);
+		
+		// loop end of loop
+		mv.visitLabel(forEnd);
+		mv.visitLineNumber(fo.stop.getLine(), forEnd);
+		switch (operation){
+		case "avg":
+			CompilerUtils.addLoad(mv, fc.autoToNum(tempvar1), bodyType);
+			CompilerUtils.addLoad(mv, fc.autoToNum(tempvar2), TypeRepresentation.INT);
+			CompilerUtils.congruentCast(mv, TypeRepresentation.INT, bodyType);
+			List<TypeRepresentation> trL = new ArrayList<TypeRepresentation>();
+			trL.add(bodyType);
+			trL.add(bodyType);
+			compileMath(mv, "/", trL, fo.block().start.getLine(), false);
+			ret = bodyType;
+			break;
+		case "sum":
+			CompilerUtils.addLoad(mv, fc.autoToNum(tempvar1), bodyType);
+			ret = bodyType;
+			break;
+		case "app":
+			// TODO
+			break;
+		case "rapp":
+			// TODO
+			break;
+		case "":
+		default:
+			CompilerUtils.addLoad(mv, fc.autoToNum(tempvar1), bodyType);
+			ret = bodyType;
+		}
+		
+		if (fo.type() != null){
+			// optional cast
+			TypeRepresentation as = CompilerUtils.asType(fo.type(),
+					imports);
+			CompilerUtils.congruentCast(mv, ret, as);
+			ret = as;
+		}
+		
+		fc.pop(mv, loopStart);
+		return ret;
 	}
 
 	/**

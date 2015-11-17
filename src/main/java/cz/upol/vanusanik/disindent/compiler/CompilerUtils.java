@@ -111,6 +111,41 @@ public class CompilerUtils implements Opcodes {
 			break;
 		}
 	}
+	
+	/**
+	 * Adds correct type of store operation to stack based on argument type
+	 * 
+	 * @param mv
+	 * @param id
+	 * @param type
+	 */
+	public static void addStore(MethodVisitor mv, Integer id,
+			TypeRepresentation type) {
+		switch (type.getType()) {
+		case DOUBLE:
+			mv.visitVarInsn(DSTORE, id);
+			break;
+		case FLOAT:
+			mv.visitVarInsn(FSTORE, id);
+			break;
+		case LONG:
+			mv.visitVarInsn(LSTORE, id);
+			break;
+		case BYTE:
+		case BOOL:
+		case INT:
+		case SHORT:
+			mv.visitVarInsn(ISTORE, id);
+			break;
+		case ANY:
+		case COMPLEX:
+		case CUSTOM:
+		case FUNCTION:
+		case STRING:
+			mv.visitVarInsn(ASTORE, id);
+			break;
+		}
+	}
 
 	public static void addReturn(MethodVisitor mv, TypeRepresentation type) {
 		switch (type.getType()) {

@@ -323,7 +323,30 @@ public class TypeRepresentation implements Serializable {
 		return jvmString.substring(1, jvmString.length()-1);
 	}
 
+	/**
+	 * Returns whether type takes 2 memory units or one
+	 * @return
+	 */
 	public boolean isDoubleMemory() {
 		return getType()==SystemTypes.LONG || getType()==SystemTypes.DOUBLE;
+	}
+
+	/**
+	 * Returns whether type is numeric
+	 * @return
+	 */
+	public boolean isNumber() {
+		switch (type){
+		case BOOL:
+		case BYTE:
+		case DOUBLE:
+		case FLOAT:
+		case INT:
+		case LONG:
+		case SHORT:
+			return true;
+		default:
+			return false;
+		}
 	}
 }

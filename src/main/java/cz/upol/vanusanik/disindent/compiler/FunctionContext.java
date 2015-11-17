@@ -3,6 +3,7 @@ package cz.upol.vanusanik.disindent.compiler;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
@@ -12,6 +13,7 @@ import org.objectweb.asm.MethodVisitor;
 
 import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation;
 import cz.upol.vanusanik.disindent.errors.CompilationException;
+import cz.upol.vanusanik.disindent.errors.TypeException;
 
 /**
  * Represents state of function at soem point of source code
@@ -30,11 +32,13 @@ public class FunctionContext {
 	}
 	
 	public void push(){
-		autos.push(new HashMap<String, TypeRepresentation>());
+		autos.push(new LinkedHashMap<String, TypeRepresentation>());
 		autoToLocal.push(new HashMap<String, Integer>());
 	}
 	
 	public void addLocal(String name, TypeRepresentation type){
+		if (autos.peek().containsKey(name))
+			throw new TypeException("duplicite type definition");
 		autos.peek().put(name, type);
 		autoToLocal.peek().put(name, ordering++);
 		if (type.isDoubleMemory())

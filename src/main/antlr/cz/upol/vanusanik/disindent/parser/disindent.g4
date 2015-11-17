@@ -177,12 +177,21 @@ operation:
 	;
 	
 complex_operation:
-	if_operation
+	  if_operation
+	| for_operation
 	;
 	
 if_operation:
 	'if' atom NEWLINE INDENT operation operation? DEDENT
 	;
+	
+for_operation:
+	'for' forop? parameter ',' atom ',' atom ',' atom block ('as' type NEWLINE)?
+	;
+	
+forop:
+	'sum' | 'app' | 'avg' | 'rapp'
+	; 
 	
 atom_operation:
 	atom NEWLINE

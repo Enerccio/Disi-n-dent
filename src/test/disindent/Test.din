@@ -1,4 +1,17 @@
 use Math
 
-double foo(test is bool, a is double, b is double)
-	Math.hypot(a, b)
+any foo(t is bool, a is double, b is double)
+	for avg x is int, 0, <(x, 1000000), +(x, 1)
+		for avg y is int, 0, <(y, 1000000), +(y, 1)
+			foo2(a, b)
+	as any
+
+double foo2(a is double, b is double)
+	call + with
+		Math.hypot(a, b)
+		call * with
+			+(a, a, a, a)
+			+(b, b, b, b)
+		call + with
+			*(a, a, a, a)
+			*(b, b, b, b)
