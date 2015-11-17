@@ -82,6 +82,7 @@ program:
 	(native_declaration NEWLINE)?
 	(using_declaration | NEWLINE)*
 	(function NEWLINE* | typedef NEWLINE* | nativeImport NEWLINE*)+
+	NEWLINE*
 	EOF
 	;
 	
@@ -170,7 +171,7 @@ block:
 	;
 		
 operation:
-	  'call' head 'with' arguments
+	  'call' head 'with' arguments ('as' type NEWLINE)?
 	| atom_operation
 	| complex_operation
 	;
@@ -181,12 +182,6 @@ complex_operation:
 	
 if_operation:
 	'if' atom NEWLINE INDENT operation operation? DEDENT
-	;
-	
-operation_nonl:
-	  'call' head 'with' arguments
-	| atom
-	| complex_operation
 	;
 	
 atom_operation:
@@ -226,7 +221,7 @@ atom:
 	;
 	
 cast:
-	'use' '(' operation_nonl ')' 'as' type
+	'use' '(' atom ')' 'as' type
 	;
 	
 accessor:

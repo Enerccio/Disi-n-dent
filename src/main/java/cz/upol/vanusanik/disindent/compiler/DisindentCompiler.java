@@ -36,7 +36,6 @@ import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.IdentifierC
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.If_operationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.NativeImportContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.OperationContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Operation_nonlContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ParameterContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ProgramContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Simple_opContext;
@@ -131,9 +130,7 @@ public class DisindentCompiler implements Opcodes {
 			nativePackage = pc.native_declaration().javaName().getText();
 		}
 
-		if (pc.using_declaration().size() != 0) {
-			resolveImports(pc);
-		}
+		resolveImports(pc);
 
 		for (TypedefContext tdc : pc.typedef()) {
 			compileNewType(tdc);
@@ -488,48 +485,6 @@ public class DisindentCompiler implements Opcodes {
 	}
 
 	/**
-	 * compiles operation
-	 * 
-	 * @param mv
-	 * @param operation
-	 * @param last
-	 * @return
-	 */
-	private TypeRepresentation compileOperation(MethodVisitor mv,
-			Operation_nonlContext operation, boolean last) {
-		Label opLabel = new Label();
-		mv.visitLabel(opLabel);
-		mv.visitLineNumber(operation.start.getLine(), opLabel);
-
-		TypeRepresentation ret = null;
-
-		if (operation.head() == null) {
-			// TODO specific forms added later like if here
-			if (operation.complex_operation() != null) {
-				return compileComplexOperation(mv,
-						operation.complex_operation(), last);
-			}
-
-			ret = compileAtom(mv, operation.atom(), last);
-			if (!last) {
-				if (ret.isDoubleMemory())
-					mv.visitInsn(POP2);
-				else
-					mv.visitInsn(POP);
-			}
-		} else {
-			ret = compileOp(mv, operation, last);
-			if (!last)
-				if (ret.isDoubleMemory())
-					mv.visitInsn(POP2);
-				else
-					mv.visitInsn(POP);
-		}
-
-		return ret;
-	}
-
-	/**
 	 * Compiles complex operation element (if, etc)
 	 * 
 	 * @param mv
@@ -610,7 +565,6 @@ public class DisindentCompiler implements Opcodes {
 		}
 
 		return compileStandardFuncCall(mv, argList, simple_op.head(), last);
-
 	}
 
 	/**
@@ -632,32 +586,25 @@ public class DisindentCompiler implements Opcodes {
 			argList.add(tr);
 		}
 
-		return compileStandardFuncCall(mv, argList, operation.head(), last);
+		TypeRepresentation retType = compileStandardFuncCall(mv, argList, operation.head(), last);
+		if (operation.type() != null){
+			// optional cast
+			TypeRepresentation as = CompilerUtils.asType(operation.type(),
+					imports);
+			CompilerUtils.congruentCast(mv, retType, as);
+			retType = as;
+		}
+		return retType;
 	}
 
 	/**
-	 * Same as other compileOp, but on different syntactical element with same
-	 * semantics
-	 * 
+	 * Compiles standard function call
 	 * @param mv
-	 * @param operation
+	 * @param argList
+	 * @param head
 	 * @param last
 	 * @return
 	 */
-	private TypeRepresentation compileOp(MethodVisitor mv,
-			Operation_nonlContext operation, boolean last) {
-		List<TypeRepresentation> argList = new ArrayList<TypeRepresentation>();
-
-		List<OperationContext> opList = new ArrayList<OperationContext>(
-				operation.arguments().operation());
-		for (OperationContext opc : opList) {
-			TypeRepresentation tr = compileOperation(mv, opc, true);
-			argList.add(tr);
-		}
-
-		return compileStandardFuncCall(mv, argList, operation.head(), last);
-	}
-
 	private TypeRepresentation compileStandardFuncCall(MethodVisitor mv,
 			List<TypeRepresentation> argList, HeadContext head, boolean last) {
 		TypeRepresentation returnType = null;
@@ -1160,8 +1107,7 @@ public class DisindentCompiler implements Opcodes {
 		if (atom.cast() != null) {
 			// cast operation
 			// returns cast type
-			TypeRepresentation tr = compileOperation(mv, atom.cast()
-					.operation_nonl(), true);
+			TypeRepresentation tr = compileAtom(mv, atom.cast().atom(), true);
 			TypeRepresentation as = CompilerUtils.asType(atom.cast().type(),
 					imports);
 			CompilerUtils.congruentCast(mv, tr, as);
