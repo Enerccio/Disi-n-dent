@@ -194,10 +194,12 @@ public class DisindentCompiler implements Opcodes {
 	 * @param pd
 	 */
 	private void resolveImports(ProgramContext pc) {
+		imports.addImport("System", true);
+		
 		for (Using_declarationContext ud : pc.using_declaration()) {
 			if (ud.using_module() != null) {
 				String fqName = ud.using_module().fqNameImport().getText();
-				imports.addImport(fqName);
+				imports.addImport(fqName, false);
 			} else {
 				Using_functionsContext fc = ud.using_functions();
 				List<UsesContext> usesList = Utils.searchForElementOfType(
@@ -206,10 +208,10 @@ public class DisindentCompiler implements Opcodes {
 						.searchForElementOfType(FqModuleNameContext.class, fc)
 						.iterator().next();
 
-				String moduleName = fmnc.getText();
+				moduleName = fmnc.getText();
 				for (UsesContext usc : usesList) {
 					for (IdentifierContext i : usc.identifier()) {
-						imports.addImport(moduleName, i.getText());
+						imports.addImport(moduleName, i.getText(), false);
 					}
 				}
 			}

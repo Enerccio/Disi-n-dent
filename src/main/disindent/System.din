@@ -1,0 +1,4 @@
+native package cz.upol.vanusanik.disindent.runtime.natives
+% this module is referenced by every module including self
+
+any native apply(f is function, arguments is any[])

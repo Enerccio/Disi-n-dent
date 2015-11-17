@@ -78,7 +78,7 @@ tokens { INDENT, DEDENT }
 }
 
 program:
-	(package_declaration NEWLINE)?
+	(package_declaration NEWLINE)? 
 	(native_declaration NEWLINE)?
 	(using_declaration | NEWLINE)*
 	(function NEWLINE* | typedef NEWLINE* | nativeImport NEWLINE*)+

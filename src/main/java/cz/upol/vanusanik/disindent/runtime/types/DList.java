@@ -1,5 +1,8 @@
 package cz.upol.vanusanik.disindent.runtime.types;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Represents linked lists of type
  * @author Peter Vanusanik
@@ -55,5 +58,19 @@ public class DList<E> {
 	 */
 	public static <T> DList<T> cdr(DList<T> l){
 		return l.rest;
+	}
+
+	public Object[] toObjectArray() {
+		List<Object> ol = new ArrayList<Object>();
+		toOArray(ol);
+		return ol.toArray();
+	}
+
+	private void toOArray(List<Object> ol) {
+		if (rest == null && head == null)
+			return;
+		ol.add(head);
+		if (rest != null)
+			rest.toOArray(ol);
 	}
 }

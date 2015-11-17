@@ -42,9 +42,9 @@ public class Imports implements Serializable {
 	 * Tries to parse import string into actual imports
 	 * @param fullImport import string
 	 */
-	public void addImport(String fullImport){
+	public void addImport(String fullImport, boolean system){
 		String[] components = Utils.splitByLastDot(fullImport);
-		addImport(components[0], components[1]);
+		addImport(components[0], components[1], system);
 	}
 
 	/**
@@ -52,7 +52,7 @@ public class Imports implements Serializable {
 	 * @param parentPath
 	 * @param object
 	 */
-	public void addImport(String parentPath, String object) {
+	public void addImport(String parentPath, String object, boolean system) {
 		String[] components = Utils.splitByLastDot(parentPath);
 		String packagePath = components[0];
 		String moduleName = components[1];
@@ -61,9 +61,9 @@ public class Imports implements Serializable {
 			// module def, load its functions as Module.function and typedefs as Module.typedef
 			FunctionSignatures fcs = BuildPath.getBuildPath().getSignatures(parentPath, object);
 			for (String fncName : fcs.definedFunctions())
-				add(parentPath, object, fncName, object + "." + fncName);
+				add(parentPath, object, fncName, system ? fncName : object + "." + fncName);
 			for (String typedef : BuildPath.getBuildPath().getTypedefs(parentPath, object))
-				add(parentPath, object, typedef, object + "." + typedef);
+				add(parentPath, object, typedef, system ? typedef : object + "." + typedef);
 			return;
 		}
 

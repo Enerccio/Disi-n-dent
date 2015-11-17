@@ -3,7 +3,7 @@ use Math
 any foo(t is bool, a is double, b is double)
 	for avg x is int, 0, <(x, 1000000), +(x, 1)
 		for avg y is int, 0, <(y, 1000000), +(y, 1)
-			foo2(a, b)
+			use (apply(&foo2, any[use (a) as any, use (b) as any])) as double
 	as any
 
 double foo2(a is double, b is double)
