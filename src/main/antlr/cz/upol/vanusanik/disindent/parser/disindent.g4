@@ -282,7 +282,7 @@ assignments:
 	;
 	
 assignment:
-	identifier 'is' atom
+	identifier '=' atom
 	;
 	
 type:
@@ -312,7 +312,7 @@ typedef:
 	;
 	
 typedef_header:
-	'define' identifier NEWLINE
+	'define' identifier 'as' NEWLINE
 	;
 	
 typedef_body:
@@ -320,7 +320,7 @@ typedef_body:
 	;
 	
 field_declaration:
-	identifier 'as' type ('with' atom)? NEWLINE
+	identifier 'is' type ('with' atom)? NEWLINE
 	;
 	
 module_identifier:

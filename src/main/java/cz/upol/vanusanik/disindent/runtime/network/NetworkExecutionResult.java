@@ -9,7 +9,8 @@ package cz.upol.vanusanik.disindent.runtime.network;
  */
 public class NetworkExecutionResult {
 	public String[] exceptions;
-	public Object[] result;
+	public Object[] results;
+	public String[] exceptionMessages;
 
 	/**
 	 * Returns true if exception happened
@@ -19,6 +20,9 @@ public class NetworkExecutionResult {
 	public boolean hasExceptions() {
 		if (exceptions == null)
 			return false;
-		return true;
+		for (String e : exceptions)
+			if (e != null)
+				return true;
+		return false;
 	}
 }

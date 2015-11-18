@@ -73,4 +73,24 @@ public class DList<E> {
 		if (rest != null)
 			rest.toOArray(ol);
 	}
+
+	public static DList<Object> asList(Object[] results) {
+		if (results == null || results.length == 0)
+			return new DList<Object>();
+		DList<Object> head = new DList<Object>();
+		DList<Object> chead = head;
+		for (Object o : results){
+			chead.head = o;
+			DList<Object> rest = new DList<Object>();
+			chead.rest = rest;
+			chead = rest;
+		}
+		chead.rest = null;
+		return head;
+	}
+
+	@Override
+	public String toString() {
+		return "DList [head=" + head + ", rest=" + rest + "]";
+	}
 }

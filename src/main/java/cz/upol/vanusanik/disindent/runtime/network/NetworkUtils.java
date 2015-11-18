@@ -1,11 +1,18 @@
 package cz.upol.vanusanik.disindent.runtime.network;
 
-import java.lang.reflect.Modifier;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.ObjectStreamClass;
 import java.net.Socket;
 
+import org.apache.commons.codec.binary.Base64;
+
 import com.eclipsesource.json.JsonObject;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+
+import cz.upol.vanusanik.disindent.buildpath.BuildPath;
 
 public class NetworkUtils {
 
@@ -29,26 +36,29 @@ public class NetworkUtils {
 		Protocol.send(s.getOutputStream(), payload);
 	}
 	
-	/**
-	 * Stores socket for current thread here
-	 */
-	private static ThreadLocal<Socket> socket = new ThreadLocal<Socket>();
 
-	public static void setSocketForThread(Socket s) {
-		socket.set(s);
-	}
-	
-	public static Socket getSocketForThread(){
-		return socket.get();
-	}
-	
-	private static Gson gson = new GsonBuilder().excludeFieldsWithModifiers(Modifier.TRANSIENT).create();
-
-	public static String serialize(Object result) {
-		return gson.toJson(result);
+	public static String serialize(Object result) throws Exception {
+		ByteArrayOutputStream bs = new ByteArrayOutputStream();
+		ObjectOutputStream oo = new ObjectOutputStream(bs);
+		oo.writeObject(result);
+		return new String(Base64.encodeBase64(bs.toByteArray()), "utf-8");
 	}
 
-	public static <T> T deserialize(String json, Class<? extends T> clazz){
-		return gson.fromJson(json, clazz);
+	@SuppressWarnings("unchecked")
+	public static <T> T deserialize(String json, Class<? extends T> clazz) throws Exception{
+		ByteArrayInputStream is = new ByteArrayInputStream(Base64.decodeBase64(json.getBytes("utf-8")));
+		ObjectInputStream oo = new ObjectInputStream(is){
+
+			@Override
+			protected Class<?> resolveClass(ObjectStreamClass desc)
+					throws IOException, ClassNotFoundException {
+				if (BuildPath.isEmpty())
+					return Class.forName(desc.getName(), false, Thread.currentThread().getContextClassLoader());
+				return 
+					Class.forName(desc.getName(), false, BuildPath.getBuildPath().getClassLoader());
+			}
+			
+		};
+		return (T) oo.readObject();
 	}
 }

@@ -5,7 +5,10 @@ import java.io.IOException;
 import java.lang.ref.SoftReference;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,14 +20,17 @@ import javax.net.ssl.SSLServerSocketFactory;
 import org.apache.log4j.Logger;
 
 import com.beust.jcommander.JCommander;
+import com.eclipsesource.json.JsonArray;
 import com.eclipsesource.json.JsonObject;
 
 import cz.upol.vanusanik.disindent.buildpath.BuildPath;
 import cz.upol.vanusanik.disindent.runtime.DisindentException;
+import cz.upol.vanusanik.disindent.runtime.network.NetworkExecutor;
 import cz.upol.vanusanik.disindent.runtime.network.NetworkUtils;
 import cz.upol.vanusanik.disindent.runtime.network.NodeList;
 import cz.upol.vanusanik.disindent.runtime.network.Protocol;
 import cz.upol.vanusanik.disindent.runtime.node.NodeCluster.___TimeoutException;
+import cz.upol.vanusanik.disindent.runtime.types.Method;
 
 /**
  * NodeController is main class of the Disindent Node.
@@ -61,20 +67,7 @@ public class NodeController {
 	 */
 	private NodeCluster cluster;
 	
-	private Map<String, SoftReference<BuildPath>> buildPathCache = new HashMap<String, SoftReference<BuildPath>>();
-
-	/**
-	 * RuntimeStoreContainer is simple data class containing the sole reference
-	 * point to particular client runtime this node was running previously. If
-	 * this instance is gc'ed, runtime will disappear.
-	 * 
-	 * @author Peter Vanusanik
-	 *
-	 */
-	public static class RuntimeStoreContainer {
-		/** Build path is stored here for the thread */
-		BuildPath buildPath; 
-	}
+	private Map<String, SoftReference<BuildPath>> buildPathCache = Collections.synchronizedMap(new HashMap<String, SoftReference<BuildPath>>());
 
 	/**
 	 * Starts this node controller instance server, will start to accept the
@@ -148,7 +141,7 @@ public class NodeController {
 	private class NodeLocalStorage {
 		/** Node that this client has reserved, if any */
 		public Node reservedNode;
-		public RuntimeStoreContainer runtime;
+		public BuildPath bp;
 		public DisindentException exception;
 	}
 
@@ -195,25 +188,38 @@ public class NodeController {
 		}
 
 		final JsonObject input = m.get("payload").asObject();
-
-		storage.runtime = new RuntimeStoreContainer();
+		if (storage.bp == null){
+			storage.bp = NetworkUtils.deserialize(input.getString("buildPath", null), BuildPath.class);
+			String uid = input.getString("uid", null);
+			buildPathCache.put(uid, new SoftReference<BuildPath>(storage.bp));
+		}
 
 		/* Initialize the runtime */
 		// TODO
 		storage.exception = null;
+		
+		final List<String> args = new ArrayList<String>();
+		JsonArray a = input.get("args").asArray();
+		for (int i=0; i<a.size(); i++)
+			args.add(a.get(i).asString());
 
 		/* Runtime is prepared to resume from last call */
 		RunnablePayload<Object> run = new RunnablePayload<Object>() {
 
 			@Override
 			protected Object executePayload() {
+				BuildPath.setForThread(storage.bp);
+				NetworkExecutor.setSocketForThread(s);
 				
-				BuildPath.setForThread(storage.runtime.buildPath);
-				NetworkUtils.setSocketForThread(s);
-
 				try {
-					// TODO
-					return null;
+					Method m = Method.makeFunction(input.getString("methodName", ""), storage.bp.getClassLoader().findClass(input.getString("runnerClass", "")));
+					Object[] a = new Object[args.size() + 1];
+					int it = 0;
+					
+					a[it++] = input.getInt("id", 0);
+					for (String arg : args)
+						a[it++] = NetworkUtils.deserialize(arg, Object.class);
+					return m.invoke(a);
 				} catch (DisindentException e) {
 					e.printStackTrace();
 					storage.exception = e;
@@ -233,7 +239,7 @@ public class NodeController {
 					// cancel unlimited running because throwing will go behind
 					// the usual end of run mechanics
 					finished = true;
-					throw t;
+					return null;
 				}
 			}
 
@@ -288,10 +294,20 @@ public class NodeController {
 		NodeLocalStorage storage = localStorage.get();
 
 		storage.reservedNode = cluster.getFreeNode();
+		String uid = m.get("payload").asObject().getString("bpUid", null);
+		
+		synchronized (buildPathCache){
+			if (buildPathCache.containsKey(uid)){
+				storage.bp = buildPathCache.get(uid).get();
+				if (storage.bp == null && buildPathCache.containsKey(uid))
+					buildPathCache.remove(uid);
+			}
+		}
+		
 		if (storage.reservedNode == null) {
 			payload.add("payload", new JsonObject().add("result", false));
 		} else {
-			payload.add("payload", new JsonObject().add("result", true));
+			payload.add("payload", new JsonObject().add("result", true).add("requestingBuildPath", storage.bp == null));
 		}
 		Protocol.send(s.getOutputStream(), payload);
 	}

@@ -15,9 +15,9 @@ public class Method implements Serializable {
 	private static final long serialVersionUID = 5071105035981928495L;
 	
 	/** method name */
-	private String methodName;
+	public String methodName;
 	/** bound class */
-	private Class<?> clazz;
+	public Class<?> clazz;
 	
 	private transient Map<List<Class<?>>, java.lang.reflect.Method> handles
 		= new HashMap<List<Class<?>>, java.lang.reflect.Method>();

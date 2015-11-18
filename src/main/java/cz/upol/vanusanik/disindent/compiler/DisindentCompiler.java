@@ -265,7 +265,7 @@ public class DisindentCompiler implements Opcodes {
 		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS
 				| ClassWriter.COMPUTE_FRAMES);
 		cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, fqJavaPath, null,
-				"java/lang/Object", null);
+				"java/lang/Object", new String[]{"java/io/Serializable"});
 		cw.visitSource(filename, null);
 
 		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null,
@@ -1341,7 +1341,7 @@ public class DisindentCompiler implements Opcodes {
 							.getFieldSignatures(varType.getFqTypeName());
 					TypeRepresentation nvarType = fs.getType(name);
 					mv.visitFieldInsn(GETFIELD,
-							Utils.slashify(varType.getFqTypeName()), name,
+							varType.getJavaClassName(), name,
 							nvarType.toJVMTypeString());
 					varType = nvarType;
 				}

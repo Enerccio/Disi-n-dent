@@ -81,7 +81,7 @@ public class Utils {
 	 * @return java class name
 	 */
 	public static String asModuledefJavaName(String moduledef) {
-		return "_m$" + StringUtils.capitalize(moduledef);
+		return "module__" + StringUtils.capitalize(moduledef);
 	}
 
 	/**
