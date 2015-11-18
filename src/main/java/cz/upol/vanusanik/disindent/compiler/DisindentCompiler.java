@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -84,6 +85,8 @@ public class DisindentCompiler implements Opcodes {
 	private String fqThisType;
 	/** used for creating tempvars */
 	private int gensymCount = 0;
+	/** stack for loops */
+	private Stack<Boolean> forLoopStack = new Stack<Boolean>();
 
 	/**
 	 * Commence the compilation of the loaded module. Will return classes
@@ -305,7 +308,7 @@ public class DisindentCompiler implements Opcodes {
 		}
 
 		mv.visitInsn(RETURN);
-		fc.pop(mv, l0);
+		fc.pop(mv, l0, true);
 		mv.visitMaxs(0, 0);
 		mv.visitEnd();
 
@@ -389,7 +392,7 @@ public class DisindentCompiler implements Opcodes {
 				CompilerUtils.nativeSignature(typeList), false);
 		CompilerUtils.addReturn(mv, fc.returnType);
 
-		fc.pop(mv, start);
+		fc.pop(mv, start, true);
 		mv.visitMaxs(0, 0);
 		mv.visitEnd();
 	}
@@ -433,14 +436,17 @@ public class DisindentCompiler implements Opcodes {
 		Label start = new Label();
 		mv.visitLineNumber(header.start.getLine(), start);
 
+		forLoopStack.push(false);
 		TypeRepresentation ret = compileBlock(mv, body);
+		forLoopStack.pop();
+		
 		if (!CompilerUtils.congruentType(mv, ret, this.fc.returnType))
 			throw new TypeException("wrong type at line "
 					+ body.operation(body.operation().size() - 1).start.getLine() + " expected "
 					+ this.fc.returnType + ", got " + ret);
 		CompilerUtils.addReturn(mv, this.fc.returnType);
 
-		this.fc.pop(mv, start);
+		this.fc.pop(mv, start, true);
 		mv.visitMaxs(0, 0);
 		mv.visitEnd();
 	}
@@ -466,7 +472,7 @@ public class DisindentCompiler implements Opcodes {
 			compileOperation(mv, body.operation(i), false);
 		TypeRepresentation ret = compileOperation(mv, body.operation(opc - 1),
 				true);
-		fc.pop(mv, blockLabel);
+		fc.pop(mv, blockLabel, !forLoopStack.peek());
 		
 		return ret;
 	}
@@ -568,7 +574,11 @@ public class DisindentCompiler implements Opcodes {
 		// loop body
 		mv.visitLabel(bodyLabel);
 		mv.visitLineNumber(fo.block().start.getLine(), bodyLabel);
+		
+		forLoopStack.push(true);
 		TypeRepresentation bodyType = compileBlock(mv, fo.block());
+		forLoopStack.pop();
+		
 		mv.visitJumpInsn(GOTO, forEndOfComp); // bodyType is on stack
 		
 		// loop start
@@ -695,7 +705,7 @@ public class DisindentCompiler implements Opcodes {
 			ret = as;
 		}
 		
-		fc.pop(mv, loopStart);
+		fc.pop(mv, loopStart, !forLoopStack.peek());
 		return ret;
 	}
 

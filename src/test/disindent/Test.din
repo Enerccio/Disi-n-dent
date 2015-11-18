@@ -1,8 +1,8 @@
 use Math
 
 double foo(ca is int, cb is int)
-	for avg x is int, 0, <(x, ca), +(x, 1)
-		for avg y is int, 0, <(y, cb), +(y, 1)
+	for x is int, 0, <(x, ca), +(x, 1)
+		for y is int, 0, <(y, cb), +(y, 1)
 			foo2(use (x) as double, use (y) as double)
 
 double foo2(a is double, b is double)

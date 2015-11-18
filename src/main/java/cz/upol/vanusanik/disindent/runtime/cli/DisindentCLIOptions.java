@@ -1,6 +1,8 @@
 package cz.upol.vanusanik.disindent.runtime.cli;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.beust.jcommander.Parameter;
 
@@ -19,7 +21,7 @@ public class DisindentCLIOptions {
 	public boolean useSSL;
 
 	@Parameter(required = true, arity = 1, description = "fully qualified path to the function to be executed (ie com.example.Foobar.baz)")
-	public String main = null;
+	public List<String> main = new ArrayList<String>();
 
 	@Parameter(names = { "-ia", "--init-args" }, description = "You can specify number only parameters that will be applied to your starting function as arguments in this as string enclosed by \"\".")
 	public String initialFuncArgs = "";

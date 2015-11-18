@@ -88,7 +88,7 @@ public class FunctionContext {
 	 * @param mv
 	 * @param start
 	 */
-	public void pop(MethodVisitor mv, Label start){
+	public void pop(MethodVisitor mv, Label start, boolean reuseOrdering){
 		Label end = new Label();
         mv.visitLabel(end);
         for (String varName : autos.peek().keySet()){
@@ -98,16 +98,18 @@ public class FunctionContext {
         	mv.visitLocalVariable(varName, varType.toJVMTypeString(), null, start, end, varId);
         }
 		autos.pop();
-		
-		// clean up used order indexes
 		Map<String, Integer> sm = autoToLocal.pop();
-		Integer min = null;
-		for (Integer i : sm.values()){
-			if (min == null)
-				min = i;
-			min = Math.min(i, min);
+		
+		if (reuseOrdering){
+			// clean up used order indexes
+			Integer min = null;
+			for (Integer i : sm.values()){
+				if (min == null)
+					min = i;
+				min = Math.min(i, min);
+			}
+			if (min != null)
+				ordering = min;
 		}
-		if (min != null)
-			ordering = min;
 	}
 }

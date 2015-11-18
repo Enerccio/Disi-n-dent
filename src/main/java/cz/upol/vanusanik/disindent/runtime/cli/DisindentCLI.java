@@ -45,7 +45,7 @@ public class DisindentCLI {
 		File workingDir = no.sourcesDirectory;
 		DisindentThread.simpleStart(workingDir.getAbsolutePath());
 
-		String execFunc = no.main;
+		String execFunc = no.main.get(0);
 
 		// transforms arguments passed into cli into PLangObjects
 		Object[] args = loadArgs(no.initialFuncArgs);
@@ -68,7 +68,7 @@ public class DisindentCLI {
 
 		String[] components = Utils.splitByLastDot(execFunc);
 		String module = components[0];
-		String func = components[0];
+		String func = components[1];
 		// execute code
 		Class<?> moduleClass = BuildPath.getBuildPath().getClassLoader().findClass(Utils.asJavaModuleName(module));
 		Method execMethod = Method.makeFunction(func, moduleClass);
