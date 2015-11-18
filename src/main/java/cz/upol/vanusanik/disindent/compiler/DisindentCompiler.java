@@ -552,8 +552,13 @@ public class DisindentCompiler implements Opcodes {
 		AtomContext testIterator = fo.atom(1);
 		AtomContext modIterator  = fo.atom(2);
 		
-		if (fo.forop() != null)
-			operation = fo.forop().getText();
+		if (fo.identifier() != null)
+			operation = fo.identifier().getText();
+		
+		// compile local bound variable available in body
+		TypeRepresentation iteratorType = CompilerUtils.asType(fo.parameter().type(), imports);
+		String iterator = fo.parameter().identifier().getText();
+		fc.addLocal(iterator, iteratorType);
 		
 		// loop start goto
 		mv.visitLabel(loopStart);
@@ -570,9 +575,6 @@ public class DisindentCompiler implements Opcodes {
 		mv.visitLabel(forInit);
 		mv.visitLineNumber(fo.parameter().start.getLine(), forInit);
 		// initialize iterator variable
-		TypeRepresentation iteratorType = CompilerUtils.asType(fo.parameter().type(), imports);
-		String iterator = fo.parameter().identifier().getText();
-		fc.addLocal(iterator, iteratorType);
 		TypeRepresentation initType = compileAtom(mv, initIterator, true);
 		if (!CompilerUtils.congruentType(mv, initType, iteratorType))
 			throw new TypeException("wrong type for initializer");

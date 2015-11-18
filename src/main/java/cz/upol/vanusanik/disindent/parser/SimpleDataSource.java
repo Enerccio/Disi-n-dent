@@ -4,7 +4,7 @@ import java.io.InputStream;
 
 /**
  * Simple data source holding filename and input stream
- * @author Enerccio
+ * @author Peter Vanusanik
  *
  */
 public class SimpleDataSource implements DataSource { 

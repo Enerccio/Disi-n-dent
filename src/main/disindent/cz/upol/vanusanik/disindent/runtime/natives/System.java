@@ -6,13 +6,14 @@ import cz.upol.vanusanik.disindent.runtime.types.DList;
 
 public class System {
 	
-    public static Object apply(Method f, DList<Object> arguments) throws Exception{
+    public static Object apply(Method f, DList<Object> arguments) throws Throwable {
     	Object[] args = arguments.toObjectArray();
-    	
-    	Class<?>[] classes = new Class<?>[args.length];
-    	for (int i=0; i<args.length; i++)
-    		classes[i] = args[i] == null ? null : args[i].getClass();
-    	return f.getMethod(classes).invoke(null, args);
+    	return f.invoke(args);
+    }
+    
+    public static Object distributed(Method f, DList<Object> arguments) throws Throwable {
+    	Object[] args = arguments.toObjectArray();
+    	return null;
     }
 
 }

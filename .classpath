@@ -16,5 +16,8 @@
 	<classpathentry kind="lib" path="lib/gson-2.4.jar" sourcepath="lib/src/gson-2.4-sources.jar"/>
 	<classpathentry kind="lib" path="lib/antlr-4.5-complete.jar"/>
 	<classpathentry kind="lib" path="lib/asm-debug-all-5.0.4.jar" sourcepath="lib/src/src.zip"/>
+	<classpathentry kind="lib" path="lib/jcommander-1.48.jar"/>
+	<classpathentry kind="lib" path="lib/log4j-1.2.17.jar"/>
+	<classpathentry kind="lib" path="lib/minimal-json-0.9.4.jar" sourcepath="lib/src/minimal-json-0.9.4-sources.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

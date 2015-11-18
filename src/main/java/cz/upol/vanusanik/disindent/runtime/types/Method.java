@@ -1,24 +1,47 @@
 package cz.upol.vanusanik.disindent.runtime.types;
 
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * Wraps java.lang.reflect.Method into custom Method class
  * @author Peter Vanusanik
  *
  */
-public class Method {
+public class Method implements Serializable {
+	private static final long serialVersionUID = 5071105035981928495L;
 	
 	/** method name */
 	private String methodName;
 	/** bound class */
 	private Class<?> clazz;
 	
+	private transient Map<List<Class<?>>, java.lang.reflect.Method> handles
+		= new HashMap<List<Class<?>>, java.lang.reflect.Method>();
+	
+	public Object invoke(Object... parameters) throws Throwable {
+		Class<?>[] classes = new Class<?>[parameters.length];
+    	for (int i=0; i<parameters.length; i++)
+    		classes[i] = parameters[i] == null ? null : parameters[i].getClass();
+    	List<Class<?>> cl = Arrays.asList(classes);
+    	if (!handles.containsKey(cl))
+	    	synchronized (handles){
+	    		if (!handles.containsKey(cl))
+	    			handles.put(cl, getMethod(classes));
+	    	}
+    	return handles.get(cl).invoke(null, parameters);
+	}
+
 	/**
 	 * Returns method for specified parameters
 	 * @param parameters
 	 * @return
 	 * @throws NoSuchMethodException
 	 */
-	public java.lang.reflect.Method getMethod(Class<?>... parameters) throws NoSuchMethodException{
+	private java.lang.reflect.Method getMethod(Class<?>... parameters) throws NoSuchMethodException {
 		cont:
 		for (java.lang.reflect.Method m : clazz.getMethods()){
 			if (m.getName().equals(methodName)){
@@ -51,6 +74,7 @@ public class Method {
 							continue cont;
 					}
 				}
+				m.setAccessible(true);
 				return m;
 			}
 		}

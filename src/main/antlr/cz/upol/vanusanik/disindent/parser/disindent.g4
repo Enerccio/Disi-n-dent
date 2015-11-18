@@ -186,12 +186,8 @@ if_operation:
 	;
 	
 for_operation:
-	'for' forop? parameter ',' atom ',' atom ',' atom block ('as' type NEWLINE)?
+	'for' identifier? parameter ',' atom ',' atom ',' atom block ('as' type NEWLINE)?
 	;
-	
-forop:
-	'sum' | 'app' | 'avg' | 'rapp'
-	; 
 	
 atom_operation:
 	atom NEWLINE

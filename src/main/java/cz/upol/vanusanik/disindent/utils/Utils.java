@@ -177,4 +177,14 @@ public class Utils {
 		}
 		return strValue;
 	}
+
+	/**
+	 * Converts com.example.Module into com/example/_m$Module
+	 * @param module
+	 * @return
+	 */
+	public static String asJavaModuleName(String module) {
+		String[] cs = splitByLastDot(module);
+		return slashify((!cs[0].equals("") ? cs[0] + "." : "") + asModuledefJavaName(cs[1]));
+	}
 }
