@@ -240,7 +240,7 @@ public class BuildPath implements Serializable {
 			if (ud.using_module() != null) {
 				String fqName = ud.using_module().fqNameImport().getText();
 				String[] split = Utils.splitByLastDot(fqName);
-				iMap.put(split[1], fqName);
+				iMap.put(split[1], fqName + "." + split[1]);
 			} else {
 				Using_functionsContext fc = ud.using_functions();
 				List<UsesContext> usesList = Utils.searchForElementOfType(
@@ -252,7 +252,7 @@ public class BuildPath implements Serializable {
 				String moduleName = fmnc.getText();
 				for (UsesContext usc : usesList) {
 					for (IdentifierContext i : usc.identifier()) {
-						iMap.put(i.getText(), moduleName);
+						iMap.put(i.getText(), moduleName + "." + i.getText());
 					}
 				}
 			}

@@ -3,10 +3,13 @@ package cz.upol.vanusanik.disindent.runtime;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
+
 import cz.upol.vanusanik.disindent.buildpath.BuildPath;
 import cz.upol.vanusanik.disindent.compiler.DisindentCompiler;
 import cz.upol.vanusanik.disindent.parser.DataSource;
 import cz.upol.vanusanik.disindent.parser.ParserBuilder;
+import cz.upol.vanusanik.disindent.utils.Utils;
 
 /**
  * DisindentClassLoader contains all disindent classes and allows loading
@@ -26,7 +29,7 @@ public class DisindentClassLoader extends ClassLoader {
 
 	@Override
 	public Class<?> findClass(String name) throws ClassNotFoundException {
-		try {
+		if (Utils.disindentClass(name)) {
 			if (!classCache.containsKey(name)){
 				synchronized (this){
 					if (!classCache.containsKey(name)){
@@ -36,14 +39,10 @@ public class DisindentClassLoader extends ClassLoader {
 				}
 			}
 			if (!classCache.containsKey(name))
-				return Thread.currentThread().getContextClassLoader().loadClass(name);
+				throw new ClassNotFoundException();
 			return classCache.get(name);
-		} catch (Throwable e){
-			try {
-				return Thread.currentThread().getContextClassLoader().loadClass(name);
-			} catch (Throwable e1){
-				throw e;
-			}
+		} else {
+			return Thread.currentThread().getContextClassLoader().loadClass(name);
 		}
 	}
 
@@ -51,8 +50,18 @@ public class DisindentClassLoader extends ClassLoader {
 		if (caches.containsKey(name))
 			return caches.get(name);
 		
+		String[] contents = Utils.splitByLastSlash(name);
+		String module = contents[1];
+		String path = contents[0];
+		
+		String exactModule = module;
+		if (StringUtils.countMatches(module, '$') > 3){
+			int idx = StringUtils.ordinalIndexOf(module, "$", 4);
+			exactModule = module.substring(0, idx);
+		}
+		
 		BuildPath bp = BuildPath.getBuildPath();
-		DataSource ds = bp.getClassSource(name);
+		DataSource ds = bp.getClassSource((path.equals("") ? "" : path + "/") + exactModule);
 		
 		if (ds == null) // class not found
 			throw new ClassNotFoundException("Class '" + name + "' not found ");

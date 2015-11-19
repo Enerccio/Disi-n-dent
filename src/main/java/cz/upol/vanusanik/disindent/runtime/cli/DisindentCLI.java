@@ -10,6 +10,8 @@ import cz.upol.vanusanik.disindent.buildpath.BuildPath;
 import cz.upol.vanusanik.disindent.runtime.network.NodeList;
 import cz.upol.vanusanik.disindent.runtime.types.Method;
 import cz.upol.vanusanik.disindent.utils.Utils;
+import cz.upol.vanusanik.disindent.utils.Warner;
+import cz.upol.vanusanik.disindent.utils.Warner.WarnLevel;
 
 /**
  * Main class for CLI runtime
@@ -29,6 +31,7 @@ public class DisindentCLI {
 		DisindentCLIOptions no = new DisindentCLIOptions();
 		new JCommander(no, args);
 
+		Warner.setWarnLevel(WarnLevel.ERROR);
 		run(no);
 	}
 

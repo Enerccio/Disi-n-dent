@@ -81,7 +81,7 @@ public class Utils {
 	 * @return java class name
 	 */
 	public static String asModuledefJavaName(String moduledef) {
-		return "module__" + StringUtils.capitalize(moduledef);
+		return "$di$m$" + StringUtils.capitalize(moduledef);
 	}
 
 	/**
@@ -96,6 +96,23 @@ public class Utils {
 		if (path.contains(".")) {
 			res[0] = path.substring(0, path.lastIndexOf("."));
 			res[1] = path.substring(path.lastIndexOf(".") + 1);
+		}
+
+		return res;
+	}
+	
+	/**
+	 * Splits path by the last slash. "foo/bar/baz" => "foo/bar", "baz"
+	 * 
+	 * @param path
+	 * @return
+	 */
+	public static String[] splitByLastSlash(String path) {
+		String[] res = new String[] { "", path };
+
+		if (path.contains("/")) {
+			res[0] = path.substring(0, path.lastIndexOf("/"));
+			res[1] = path.substring(path.lastIndexOf("/") + 1);
 		}
 
 		return res;
@@ -186,5 +203,10 @@ public class Utils {
 	public static String asJavaModuleName(String module) {
 		String[] cs = splitByLastDot(module);
 		return slashify((!cs[0].equals("") ? cs[0] + "." : "") + asModuledefJavaName(cs[1]));
+	}
+
+	public static boolean disindentClass(String name) {
+		String[] split = StringUtils.split(name, "/");
+		return split[split.length-1].startsWith("$di$");
 	}
 }

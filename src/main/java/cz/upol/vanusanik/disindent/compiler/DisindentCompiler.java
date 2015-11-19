@@ -211,7 +211,7 @@ public class DisindentCompiler implements Opcodes {
 						.searchForElementOfType(FqModuleNameContext.class, fc)
 						.iterator().next();
 
-				moduleName = fmnc.getText();
+				String moduleName = fmnc.getText();
 				for (UsesContext usc : usesList) {
 					for (IdentifierContext i : usc.identifier()) {
 						imports.addImport(moduleName, i.getText(), false);
