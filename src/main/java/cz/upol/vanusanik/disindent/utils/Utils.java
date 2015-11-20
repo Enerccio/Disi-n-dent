@@ -1,6 +1,7 @@
 package cz.upol.vanusanik.disindent.utils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -208,5 +209,15 @@ public class Utils {
 	public static boolean disindentClass(String name) {
 		String[] split = StringUtils.split(name, "/");
 		return split[split.length-1].startsWith("$di$");
+	}
+
+	public static String asContextName(String ctxName) {
+		return StringUtils.capitalize(ctxName) + "Context";
+	}
+
+	public static Object[] prepend(Object context, Object[] parameters) {
+		ArrayList<Object> o = new ArrayList<Object>(Arrays.asList(parameters));
+		o.add(0, context);
+		return o.toArray();
 	}
 }

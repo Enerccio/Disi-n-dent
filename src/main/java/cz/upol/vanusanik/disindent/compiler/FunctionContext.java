@@ -1,86 +1,177 @@
 package cz.upol.vanusanik.disindent.compiler;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Stack;
 
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 
 import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation;
 import cz.upol.vanusanik.disindent.errors.CompilationException;
-import cz.upol.vanusanik.disindent.errors.TypeException;
 
 /**
- * Represents state of function at soem point of source code
+ * Represents state of function at some point of source code
  * @author Peter Vanusanik
  *
  */
 public class FunctionContext {
-
-	public final TypeRepresentation returnType;
-	private int ordering = 0;
-	private Stack<Map<String, TypeRepresentation>> autos = new Stack<Map<String, TypeRepresentation>>();
-	private Stack<Map<String, Integer>> autoToLocal = new Stack<Map<String, Integer>>();
 	
-	public FunctionContext(TypeRepresentation returnType){
-		this.returnType = returnType;
+	public static class FunctionBlock {
+		private int ordering = 0;
+		private int cordering = 0;
+		
+		private TypeRepresentation returnType;
+		TypeRepresentation contextType;
+		
+		private List<ContextBlock> scopes = new ArrayList<ContextBlock>();
+		Map<String, TypeRepresentation> closureVariable = new HashMap<String, TypeRepresentation>();
+		Map<String, String> closureAccessor = new HashMap<String, String>();
+	}
+	
+	public static class ContextBlock {
+		private Map<String, Integer> autoNumber = new HashMap<String, Integer>();
+		private Map<String, TypeRepresentation> type = new HashMap<String, TypeRepresentation>();
+		
+		Map<String, Integer> savedClosures = new HashMap<String, Integer>();
+		Map<String, String> savedClosuresLocals = new HashMap<String, String>();
+		
+		FunctionBlock pFuncBlock;
+	}
+	
+	private List<FunctionBlock> ctxStack = new ArrayList<FunctionBlock>();
+	
+	public FunctionContext(){
+		
+	}
+	
+	public void pushNewFunc(TypeRepresentation returnType, TypeRepresentation contextType){
+		FunctionBlock fb = new FunctionBlock();
+		fb.returnType = returnType;
+		fb.contextType = contextType;
+		if (ctxStack.size() > 0)
+			ctxStack.get(0).scopes.get(0).pFuncBlock = fb;
+		ctxStack.add(fb);
 	}
 	
 	public void push(){
-		autos.push(new LinkedHashMap<String, TypeRepresentation>());
-		autoToLocal.push(new HashMap<String, Integer>());
+		ContextBlock b = new ContextBlock();
+		ctxStack.get(0).scopes.add(0, b);
 	}
 	
 	public void addLocal(String name, TypeRepresentation type){
-		if (autos.peek().containsKey(name))
-			throw new TypeException("duplicite type definition");
-		autos.peek().put(name, type);
-		autoToLocal.peek().put(name, ordering++);
+		ctxStack.get(0).scopes.get(0).type.put(name, type);
+		ctxStack.get(0).scopes.get(0).autoNumber.put(name, ctxStack.get(0).ordering++);
 		if (type.isDoubleMemory())
-			ordering++;
+			++ctxStack.get(0).ordering;
 	}
 	
-	/**
-	 * Returns type of the local variable
-	 * @param auto
-	 * @return
-	 */
-	public TypeRepresentation autoToType(String auto){
-		TypeRepresentation tr = null;
-		List<Map<String, TypeRepresentation>> cr = new ArrayList<Map<String, TypeRepresentation>>(autos);
-		Collections.reverse(cr);
+	public boolean isLocal(String name){
+		return isLocal(name, ctxStack);
+	}
+	
+	private boolean isLocal(String name, List<FunctionBlock> ctxStack) {
+		if (ctxStack.size() == 0)
+			throw new CompilationException("variable " + name + " unbound");
 		
-		for (Map<String, TypeRepresentation> m : cr){
-			tr = m.get(auto);
+		FunctionBlock b = ctxStack.get(0);
+		if (b.closureVariable.containsKey(name))
+			return false;
+		else if (isLocalScope(name, b.scopes)){
+			return true;
+		} else {
+			List<FunctionBlock> subList = ctxStack.size() == 1 ? new ArrayList<FunctionBlock>() : ctxStack.subList(1, ctxStack.size()-1);
+			TypeRepresentation type = variableToType(name, subList.get(0));
+			if (isLocal(name, subList)){
+				int localId = localToAuto(name, subList.get(0));
+				String accessName = name + "$" + b.cordering++;
+				b.closureAccessor.put(name, accessName);
+				b.closureVariable.put(name, type);
+				subList.get(0).scopes.get(0).savedClosures.put(name, localId);
+			} else {
+				String localName = localToField(name, subList.get(0));
+				String accessName = localName + "$" + b.cordering++;
+				b.closureAccessor.put(name, accessName);
+				b.closureVariable.put(name, type);
+				subList.get(0).scopes.get(0).savedClosuresLocals.put(name, localName);
+			}
+			return false;
+		}
+		
+	}
+	
+	public String localToField(String name) {
+		return ctxStack.get(0).closureAccessor.get(name);
+	}
+
+	private String localToField(String name, FunctionBlock functionBlock) {
+		return functionBlock.closureAccessor.get(name);
+	}
+
+	private int localToAuto(String name, FunctionBlock functionBlock) {
+		for (ContextBlock cb : functionBlock.scopes){
+			if (cb.type.containsKey(name))
+				return cb.autoNumber.get(name);
+		}
+		throw new CompilationException("variable " + name + " unbound");
+	}
+
+	private boolean isLocalScope(String name, List<ContextBlock> scopes) {
+		for (ContextBlock cb : scopes){
+			if (cb.type.containsKey(name))
+				return true;
+		}
+		return false;
+	}
+
+	public TypeRepresentation variableToType(String varName){
+		for (FunctionBlock fb : ctxStack){
+			TypeRepresentation tr = variableToType(varName, fb);
 			if (tr != null)
 				return tr;
 		}
-		
-		throw new CompilationException("variable " + auto + " unbound");
+		return null;
 	}
 	
+	private TypeRepresentation variableToType(String varName, FunctionBlock fb) {
+		if (fb.closureVariable.containsKey(varName))
+			return fb.closureVariable.get(varName);
+		for (ContextBlock cb : fb.scopes){
+			TypeRepresentation tr = cb.type.get(varName);
+			if (tr != null)
+				return tr;
+		}
+		return null;
+	}
+
 	/**
 	 * Returns order id of local variable
 	 * @param auto
 	 * @return
 	 */
-	public Integer autoToNum(String auto){
-		Integer an = null;
-		List<Map<String, Integer>> cr = new ArrayList<Map<String, Integer>>(autoToLocal);
-		Collections.reverse(cr);
-		
-		for (Map<String, Integer> m : cr){
-			an = m.get(auto);
-			if (an != null)
-				return an;
+	public Integer autoToNum(String varName){
+		for (ContextBlock cb : ctxStack.get(0).scopes){
+			Integer i = cb.autoNumber.get(varName);
+			if (i != null)
+				return i;
 		}
-		
 		return null;
+	}
+	
+	public TypeRepresentation getReturnType(){
+		return ctxStack.get(0).returnType;
+	}
+	
+	public TypeRepresentation getContextType(){
+		return ctxStack.get(0).contextType;
+	}
+	
+	public ContextBlock popFunctionBlock(){
+		ctxStack.remove(0);
+		if (ctxStack.size() == 0)
+			return null;
+		return ctxStack.get(0).scopes.get(0);
 	}
 
 	/**
@@ -89,27 +180,29 @@ public class FunctionContext {
 	 * @param start
 	 */
 	public void pop(MethodVisitor mv, Label start, boolean reuseOrdering){
+		FunctionBlock fb = ctxStack.get(0);
+		ContextBlock cb = fb.scopes.get(0);
+        fb.scopes.remove(0);
+		
 		Label end = new Label();
         mv.visitLabel(end);
-        for (String varName : autos.peek().keySet()){
-        	Integer varId = autoToLocal.peek().get(varName);
-        	TypeRepresentation varType = autos.peek().get(varName);
+        for (String varName : cb.type.keySet()){
+        	Integer varId = cb.autoNumber.get(varName);
+        	TypeRepresentation varType = cb.type.get(varName);
         	
         	mv.visitLocalVariable(varName, varType.toJVMTypeString(), null, start, end, varId);
         }
-		autos.pop();
-		Map<String, Integer> sm = autoToLocal.pop();
 		
 		if (reuseOrdering){
 			// clean up used order indexes
 			Integer min = null;
-			for (Integer i : sm.values()){
+			for (Integer i : cb.autoNumber.values()){
 				if (min == null)
 					min = i;
 				min = Math.min(i, min);
 			}
 			if (min != null)
-				ordering = min;
+				fb.ordering = min;
 		}
 	}
 }

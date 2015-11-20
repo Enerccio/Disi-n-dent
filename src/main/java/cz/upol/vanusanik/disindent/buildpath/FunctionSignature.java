@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation.SystemTypes;
 import cz.upol.vanusanik.disindent.errors.CompilationException;
 import cz.upol.vanusanik.disindent.errors.MethodAlreadyExistException;
 
@@ -97,7 +98,7 @@ public class FunctionSignature implements Serializable {
 		if (trList.size() == 0)
 			return levelName;
 		if (subsignatures.containsKey(trList.get(0))){
-			return subsignatures.get(trList.get(0)).methodName(trList.subList(1, trList.size()));
+			return subsignatures.get(trList.get(0)).byParameters(trList.subList(1, trList.size()), false);
 		}
 		return null;
 	}
@@ -132,6 +133,19 @@ public class FunctionSignature implements Serializable {
 			return levelName;
 		
 		TypeRepresentation parameter = parameters.get(0);
+		
+		if (parameter.getType() == SystemTypes.CUSTOM && parameter.getFqTypeName() == null){
+			// placeholder context type
+			
+			for (TypeRepresentation tr : subsignatures.keySet()){
+				SignatureSpecifier ret = subsignatures.get(tr).byParameters(parameters.subList(1, parameters.size()), false);
+				if (ret != null){
+					parameter.setFqTypeName(tr.getFqTypeName());
+					return ret;
+				}
+			}
+			return null;
+		}
 		
 		if (subsignatures.containsKey(parameter)){
 			return subsignatures.get(parameter).byParameters(parameters.subList(1, parameters.size()), false);

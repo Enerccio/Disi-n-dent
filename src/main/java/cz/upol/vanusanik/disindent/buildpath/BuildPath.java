@@ -385,11 +385,14 @@ public class BuildPath implements Serializable {
 	 */
 	private void loadFunctions(AvailableElement ae, ProgramContext pc,
 			Map<String, String> imports) {
-		for (FunctionContext fc : pc.function()) {
-			loadFunctionOrNative(fc, ae, imports);
-		}
+		int itc = 0;
+		
 		for (NativeImportContext nic : pc.nativeImport()) {
-			loadFunctionOrNative(nic, ae, imports);
+			loadFunctionOrNative(nic, ae, imports, itc++);
+		}
+		
+		for (FunctionContext fc : pc.function()) {
+			loadFunctionOrNative(fc, ae, imports, itc++);
 		}
 	}
 
@@ -399,9 +402,10 @@ public class BuildPath implements Serializable {
 	 * @param p
 	 * @param ae
 	 * @param imports
+	 * @param itc 
 	 */
 	private void loadFunctionOrNative(ParseTree p, AvailableElement ae,
-			Map<String, String> imports) {
+			Map<String, String> imports, int itc) {
 		TypeContext returnContext = Utils.searchForElementOfType(
 				TypeContext.class, p).get(0);
 		IdentifierContext name = Utils.searchForElementOfType(
@@ -410,9 +414,14 @@ public class BuildPath implements Serializable {
 				Func_argumentsContext.class, p).get(0);
 
 		String baseName = name.getText();
+		TypeRepresentation contextType = new TypeRepresentation();
+		contextType.setType(SystemTypes.CUSTOM);
+		contextType.setFqTypeName(((ae.modulePackage.equals("") ? "" : ae.modulePackage + ".") + ae.elementDinName) + "." + Utils.asContextName(baseName) + itc);
+		
 		List<TypeContext> types = new ArrayList<TypeContext>();
 
 		types.add(returnContext);
+		
 		for (TypeContext t : Utils.searchForElementOfType(TypeContext.class,
 				args)) {
 			types.add(t);
@@ -420,6 +429,7 @@ public class BuildPath implements Serializable {
 
 		List<TypeRepresentation> trl = new ArrayList<TypeRepresentation>();
 		for (TypeContext t : types) {
+			
 			TypepartContext typepc = t.typepart();
 
 			String tt;
@@ -430,6 +440,7 @@ public class BuildPath implements Serializable {
 
 			trl.add(asType(tt, t, imports, ae));
 		}
+		trl.add(1, contextType);
 
 		ae.functionSignatures.addFunction(baseName, trl);
 	}

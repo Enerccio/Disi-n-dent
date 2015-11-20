@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import cz.upol.vanusanik.disindent.utils.Utils;
+
 /**
  * Wraps java.lang.reflect.Method into custom Method class
  * @author Peter Vanusanik
@@ -18,11 +20,15 @@ public class Method implements Serializable {
 	public String methodName;
 	/** bound class */
 	public Class<?> clazz;
+	/** bound context */
+	public Object context;
 	
 	private transient Map<List<Class<?>>, java.lang.reflect.Method> handles
 		= new HashMap<List<Class<?>>, java.lang.reflect.Method>();
 	
 	public Object invoke(Object... parameters) throws Throwable {
+		parameters = Utils.prepend(context, parameters);
+		
 		Class<?>[] classes = new Class<?>[parameters.length];
     	for (int i=0; i<parameters.length; i++)
     		classes[i] = parameters[i] == null ? null : parameters[i].getClass();

@@ -468,4 +468,9 @@ public class CompilerUtils implements Opcodes {
 		}
 		return 0;
 	}
+
+	public static void addFieldLoad(MethodVisitor mv, String accessor,
+			TypeRepresentation varType, TypeRepresentation contextType) {
+		mv.visitFieldInsn(GETFIELD, contextType.toJVMTypeString().substring(1, contextType.toJVMTypeString().length()-1), accessor, varType.toJVMTypeString());
+	}
 }
