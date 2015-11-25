@@ -1613,38 +1613,38 @@ public class DisindentCompiler implements Opcodes {
 				return tr;
 			}
 
-			if (c.funcptr() != null) {
-				// function pointer
-				String fncName = c.funcptr().funcdesignator().getText();
-				String fqPath = imports.importMapOriginal.get(fncName);
-				if (fqPath == null && fncName.contains("."))
-					fqPath = fncName;
-				if (fqPath == null)
-					throw new MalformedImportDeclarationException("function "
-							+ fncName + " is not defined");
-				String typeName = fqPath.substring(0, fqPath.lastIndexOf('.'));
-				String cp = BuildPath.getBuildPath().getClassPath(typeName);
-
-				if (cp == null)
-					throw new MalformedImportDeclarationException("function "
-							+ fncName + " is not defined");
-
-				mv.visitLdcInsn(fncName);
-				mv.visitLdcInsn(Type.getType(Utils.asLName(fqThisType)));
-				mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Class",
-						"getClassLoader", "()Ljava/lang/ClassLoader;", false);
-				mv.visitLdcInsn(cp);
-				mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/ClassLoader",
-						"loadClass", "(Ljava/lang/String;)Ljava/lang/Class;",
-						false);
-				mv.visitMethodInsn(
-						INVOKESTATIC,
-						"cz/upol/vanusanik/disindent/runtime/types/Method",
-						"makeFunction",
-						"(Ljava/lang/String;Ljava/lang/Class;)Lcz/upol/vanusanik/disindent/runtime/types/Method;",
-						false);
-				return TypeRepresentation.FUNCTION;
-			}
+//			if (c.funcptr() != null) {
+//				// function pointer
+//				String fncName = c.funcptr().funcdesignator().getText();
+//				String fqPath = imports.importMapOriginal.get(fncName);
+//				if (fqPath == null && fncName.contains("."))
+//					fqPath = fncName;
+//				if (fqPath == null)
+//					throw new MalformedImportDeclarationException("function "
+//							+ fncName + " is not defined");
+//				String typeName = fqPath.substring(0, fqPath.lastIndexOf('.'));
+//				String cp = BuildPath.getBuildPath().getClassPath(typeName);
+//
+//				if (cp == null)
+//					throw new MalformedImportDeclarationException("function "
+//							+ fncName + " is not defined");
+//
+//				mv.visitLdcInsn(fncName);
+//				mv.visitLdcInsn(Type.getType(Utils.asLName(fqThisType)));
+//				mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Class",
+//						"getClassLoader", "()Ljava/lang/ClassLoader;", false);
+//				mv.visitLdcInsn(cp);
+//				mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/ClassLoader",
+//						"loadClass", "(Ljava/lang/String;)Ljava/lang/Class;",
+//						false);
+//				mv.visitMethodInsn(
+//						INVOKESTATIC,
+//						"cz/upol/vanusanik/disindent/runtime/types/Method",
+//						"makeFunction",
+//						"(Ljava/lang/String;Ljava/lang/Class;)Lcz/upol/vanusanik/disindent/runtime/types/Method;",
+//						false);
+//				return TypeRepresentation.FUNCTION;
+//			}
 		}
 
 		if (atom.constList() != null) {

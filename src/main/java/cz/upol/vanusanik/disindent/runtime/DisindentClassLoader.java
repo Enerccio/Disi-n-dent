@@ -7,6 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import cz.upol.vanusanik.disindent.buildpath.BuildPath;
 import cz.upol.vanusanik.disindent.compiler.DisindentCompiler;
+import cz.upol.vanusanik.disindent.compiler.InvokerCompiler;
 import cz.upol.vanusanik.disindent.parser.DataSource;
 import cz.upol.vanusanik.disindent.parser.ParserBuilder;
 import cz.upol.vanusanik.disindent.utils.Utils;
@@ -50,27 +51,32 @@ public class DisindentClassLoader extends ClassLoader {
 		if (caches.containsKey(name))
 			return caches.get(name);
 		
-		String[] contents = Utils.splitByLastSlash(name);
-		String module = contents[1];
-		String path = contents[0];
-		
-		String exactModule = module;
-		if (StringUtils.countMatches(module, '$') > 3){
-			int idx = StringUtils.ordinalIndexOf(module, "$", 4);
-			exactModule = module.substring(0, idx);
+		if (name.startsWith("$di$")){
+			new InvokerCompiler(this, name).compile();
+			return caches.get(name);
+		} else {
+			String[] contents = Utils.splitByLastSlash(name);
+			String module = contents[1];
+			String path = contents[0];
+			
+			String exactModule = module;
+			if (StringUtils.countMatches(module, '$') > 3){
+				int idx = StringUtils.ordinalIndexOf(module, "$", 4);
+				exactModule = module.substring(0, idx);
+			}
+			
+			BuildPath bp = BuildPath.getBuildPath();
+			DataSource ds = bp.getClassSource((path.equals("") ? "" : path + "/") + exactModule);
+			
+			if (ds == null) // class not found
+				throw new ClassNotFoundException("Class '" + name + "' not found ");
+			
+			ParserBuilder bd = new ParserBuilder();
+			bd.setDataSource(ds);
+			new DisindentCompiler(ds.getFilename(), bd.build(), this).compile();
+			
+			return caches.get(name);
 		}
-		
-		BuildPath bp = BuildPath.getBuildPath();
-		DataSource ds = bp.getClassSource((path.equals("") ? "" : path + "/") + exactModule);
-		
-		if (ds == null) // class not found
-			throw new ClassNotFoundException("Class '" + name + "' not found ");
-		
-		ParserBuilder bd = new ParserBuilder();
-		bd.setDataSource(ds);
-		new DisindentCompiler(ds.getFilename(), bd.build(), this).compile();
-		
-		return caches.get(name);
 	}
 	
 	public synchronized void addClass(String slashFQName, byte[] data){

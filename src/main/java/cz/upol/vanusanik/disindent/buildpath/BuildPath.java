@@ -93,6 +93,10 @@ public class BuildPath implements Serializable {
 
 	}
 
+	private int orderId = 0;
+	private Map<TypeRepresentation, Integer> typeToOrdering = new HashMap<TypeRepresentation, Integer>();
+	private Map<Integer, TypeRepresentation> orderingToType = new HashMap<Integer, TypeRepresentation>();
+	
 	private transient DisindentClassLoader dcl = new DisindentClassLoader(
 			Runtime.class.getClassLoader());
 	private Map<String, AvailableElement> availableElements = new TreeMap<String, AvailableElement>();
@@ -293,7 +297,14 @@ public class BuildPath implements Serializable {
 				throw new BuildPathException("duplicate typedef name");
 			ae.typedefs.add(te.elementDinName);
 
+			TypeRepresentation typedefType = new TypeRepresentation();
+			typedefType.setType(SystemTypes.CUSTOM);
+			typedefType.setFqTypeName((ae.modulePackage.equals("") ? "" : (ae.modulePackage + ".")) + ae.elementDinName + "." + te.elementDinName);
+			registerType(typedefType);
+			
 			loadTypedef(te, tc, imports);
+			
+			
 
 			availableElements.put(ae.slashPackage.equals("") ? te.elementName
 					: ae.slashPackage + "/" + te.elementName, ae);
@@ -302,6 +313,13 @@ public class BuildPath implements Serializable {
 					+ "."
 					+ te.elementDinName, te);
 		}
+	}
+
+	public void registerType(TypeRepresentation typedefType) {
+		if (typeToOrdering.containsKey(typedefType))
+			return;
+		typeToOrdering.put(typedefType, orderId);
+		orderingToType.put(orderId++, typedefType);
 	}
 
 	/**
@@ -344,7 +362,7 @@ public class BuildPath implements Serializable {
 	 * @param imports
 	 *            list of imports
 	 * @param mae
-	 *            module elemnt to be validated if type exists or not
+	 *            module element to be validated if type exists or not
 	 * @return
 	 */
 	private TypeRepresentation asType(String tt, TypeContext fc,
@@ -528,6 +546,25 @@ public class BuildPath implements Serializable {
 
 	public static boolean isEmpty() {
 		return instance.get() == null;
+	}
+
+	public static final String INVOKER_BASE_NAME = "$di$Invoker$";
+	public static final int INVOKER_NAME_LENGTH = INVOKER_BASE_NAME.length();
+	
+	public String generateInvoker(List<TypeRepresentation> generics) {
+		String invokerName = INVOKER_BASE_NAME;
+		for (TypeRepresentation tr : generics){
+			invokerName += tr.toInvokerName() + "$";
+		}
+		return invokerName.substring(0, invokerName.length()-1);
+	}
+
+	public int getTypeOrder(TypeRepresentation typeRepresentation) {
+		return typeToOrdering.get(typeRepresentation);
+	}
+	
+	public TypeRepresentation getOrderType(int order){
+		return orderingToType.get(order);
 	}
 
 }

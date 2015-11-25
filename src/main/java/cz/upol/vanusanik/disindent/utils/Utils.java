@@ -82,7 +82,7 @@ public class Utils {
 	 * @return java class name
 	 */
 	public static String asModuledefJavaName(String moduledef) {
-		return "$di$m$" + StringUtils.capitalize(moduledef);
+		return "$dv$m$" + StringUtils.capitalize(moduledef);
 	}
 
 	/**
@@ -208,7 +208,7 @@ public class Utils {
 
 	public static boolean disindentClass(String name) {
 		String[] split = StringUtils.split(name, "/");
-		return split[split.length-1].startsWith("$di$");
+		return split[split.length-1].startsWith("$dv$") || split[split.length-1].startsWith("$di$");
 	}
 
 	public static String asContextName(String ctxName) {

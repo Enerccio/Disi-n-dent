@@ -32,6 +32,7 @@ public class FunctionSignature implements Serializable {
 		public final List<TypeRepresentation> specList;
 		public final List<TypeRepresentation> parameters;
 		public final TypeRepresentation retType;
+		public final TypeRepresentation selfType;
 		
 		public SignatureSpecifier(String functionName, String javaSignature, List<TypeRepresentation> specList) {
 			super();
@@ -40,6 +41,15 @@ public class FunctionSignature implements Serializable {
 			this.specList = Collections.unmodifiableList(new ArrayList<TypeRepresentation>(specList));
 			this.parameters = Collections.unmodifiableList(new ArrayList<TypeRepresentation>(specList.subList(1, specList.size())));
 			this.retType = specList.get(0);
+			this.selfType = new TypeRepresentation();
+			this.selfType.setType(SystemTypes.FUNCTION);
+			
+			specList = new ArrayList<TypeRepresentation>(specList);
+			specList.remove(1); // remove context specifier because it is irrelevant in invoking
+			for (TypeRepresentation tr : specList)
+				this.selfType.addGenerics(tr);
+			
+			BuildPath.getBuildPath().registerType(this.selfType);
 		}
 	}
 	

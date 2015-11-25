@@ -44,7 +44,6 @@ public class TypeRepresentation implements Serializable {
 	public static final TypeRepresentation FLOAT = new TypeRepresentation(SystemTypes.FLOAT);
 	public static final TypeRepresentation DOUBLE = new TypeRepresentation(SystemTypes.DOUBLE);
 	public static final TypeRepresentation STRING = new TypeRepresentation(SystemTypes.STRING);
-	public static final TypeRepresentation FUNCTION = new TypeRepresentation(SystemTypes.FUNCTION);
 	public static final TypeRepresentation ANY = new TypeRepresentation(SystemTypes.ANY);
 	public static final TypeRepresentation NULL = new TypeRepresentation(null);;
 	
@@ -60,7 +59,6 @@ public class TypeRepresentation implements Serializable {
 		simpleTypeMap.put("float", FLOAT);
 		simpleTypeMap.put("double", DOUBLE);
 		simpleTypeMap.put("string", STRING);
-		simpleTypeMap.put("function", FUNCTION);
 		simpleTypeMap.put("any", ANY);
 	}
 	
@@ -199,7 +197,7 @@ public class TypeRepresentation implements Serializable {
 		case FLOAT:
 			return "F";
 		case FUNCTION:
-			return "Lcz/upol/vanusanik/disindent/runtime/types/Method;";
+			return "L" + BuildPath.getBuildPath().generateInvoker(generics) + ";";
 		case INT:
 			return "I";
 		case LONG:
@@ -347,6 +345,38 @@ public class TypeRepresentation implements Serializable {
 			return true;
 		default:
 			return false;
+		}
+	}
+
+	public String toInvokerName() {
+		if (isCustomType())
+			return "L" + getSimpleType().toInvokerName();
+		
+		if (isComplexType())
+			return "C" + new Integer(BuildPath.getBuildPath().getTypeOrder(this)).toString();
+		
+		switch (type){
+		case ANY:
+			return "A";
+		case BOOL:
+			return "Z";
+		case BYTE:
+			return "B";
+		case SHORT:
+			return "S";
+		case DOUBLE:
+			return "D";
+		case FLOAT:
+			return "F";
+		case FUNCTION:
+			return "f" + new Integer(BuildPath.getBuildPath().getTypeOrder(this)).toString();
+		case INT:
+			return "I";
+		case LONG:
+			return "J";
+		default:
+		case STRING:
+			return "s";
 		}
 	}
 }
