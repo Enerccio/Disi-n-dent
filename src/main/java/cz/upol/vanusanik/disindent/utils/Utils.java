@@ -72,7 +72,11 @@ public class Utils {
 	 * @return java class name
 	 */
 	public static String asTypedefJavaName(String typedef) {
-		return StringUtils.capitalize(typedef);
+		return "type" + StringUtils.capitalize(typedef);
+	}
+	
+	public static String asFuncJavaName(String func) {
+		return "func" + StringUtils.capitalize(func);
 	}
 
 	/**

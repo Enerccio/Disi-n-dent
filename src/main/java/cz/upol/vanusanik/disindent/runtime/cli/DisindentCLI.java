@@ -74,7 +74,8 @@ public class DisindentCLI {
 		String func = components[1];
 		// execute code
 		Class<?> moduleClass = BuildPath.getBuildPath().getClassLoader().findClass(Utils.asJavaModuleName(module));
-		Method execMethod = Method.makeFunction(func, moduleClass);
+		Object mod = moduleClass.newInstance();
+		Method execMethod = (Method) moduleClass.getField(func).get(mod);
 		System.out.println(execMethod.invoke(args));
 	}
 

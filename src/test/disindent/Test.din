@@ -1,14 +1,14 @@
 use Math
-from Test2 use holder 
-
+use Test2.holder
 
 double foo(ca is int, cb is int)
 	call exec with 
-		make holder with (loopc_outer = ca, loopc_inner = cb)
+		ca
+		cb
 
-double exec(data is holder)
-	for avg x is int, 0, <(x, data.loopc_outer), +(x, 1)
-		for avg y is int, 0, <(y, data.loopc_inner), +(y, 1)
+double exec(ca is int, cb is int)
+	for avg x is int, 0, <(x, ca), +(x, 1)
+		for avg y is int, 0, <(y, cb), +(y, 1)
 			foo2(use (x) as double, use (y) as double)
 
 double foo2(a is double, b is double)

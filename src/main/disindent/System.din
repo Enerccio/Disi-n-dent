@@ -1,5 +1,5 @@
 native package cz.upol.vanusanik.disindent.runtime.natives
 % this module is referenced by every module including self
 
-any native apply(f is function, arguments is any[])
-any native distributed(f is function, tc is int, arguments is any[])
+double xxx()
+	0

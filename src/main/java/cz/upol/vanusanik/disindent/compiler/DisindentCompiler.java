@@ -3,7 +3,11 @@ package cz.upol.vanusanik.disindent.compiler;
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Stack;
 
 import org.apache.commons.io.FileUtils;
@@ -15,6 +19,7 @@ import cz.upol.vanusanik.disindent.buildpath.BuildPath;
 import cz.upol.vanusanik.disindent.buildpath.FieldSignatures;
 import cz.upol.vanusanik.disindent.buildpath.FunctionSignature.SignatureSpecifier;
 import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation.SystemTypes;
+import cz.upol.vanusanik.disindent.compiler.FunctionContext.ContextBlock;
 import cz.upol.vanusanik.disindent.buildpath.FunctionSignatures;
 import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation;
 import cz.upol.vanusanik.disindent.errors.CompilationException;
@@ -87,6 +92,8 @@ public class DisindentCompiler implements Opcodes {
 	private int gensymCount = 0;
 	/** stack for loops */
 	private Stack<Boolean> forLoopStack = new Stack<Boolean>();
+	
+	private List<byte[]> validateList = new ArrayList<byte[]>();
 
 	/**
 	 * Commence the compilation of the loaded module. Will return classes
@@ -117,6 +124,21 @@ public class DisindentCompiler implements Opcodes {
 						Utils.asModuledefJavaName(moduleName), packageName)),
 				moduleByteData);
 	}
+	
+	private static class CtxHolder {
+		public String name;
+		
+		public TypedefContext typedef;
+		public List<Integer> iords;
+		public List<NativeImportContext> natives;
+		public List<FunctionContext> functions;
+	}
+	
+	private static class ParentContext {
+		public String classJavaName;
+		public ClassVisitor writer;
+		public MethodVisitor parentContext;
+	}
 
 	/**
 	 * Compiles module into java class as byte array
@@ -140,15 +162,19 @@ public class DisindentCompiler implements Opcodes {
 
 		resolveImports(pc);
 
-		for (TypedefContext tdc : pc.typedef()) {
-			compileNewType(tdc);
-		}
-
 		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS
 				| ClassWriter.COMPUTE_FRAMES);
 		cw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, fqThisType, null,
 				"java/lang/Object", null);
 		cw.visitSource(filename, null);
+		
+		TypeRepresentation contextType = new TypeRepresentation();
+		contextType.setType(SystemTypes.JRAWTYPE);
+		contextType.setFqTypeName(fqThisType);
+		
+		fc = new cz.upol.vanusanik.disindent.compiler.FunctionContext();
+		fc.pushNewFunc(null, contextType);
+		fc.push();
 
 		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC, "<init>", "()V", null,
 				null);
@@ -159,37 +185,216 @@ public class DisindentCompiler implements Opcodes {
 		mv.visitVarInsn(ALOAD, 0);
 		mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V",
 				false);
+		fc.addLocal("$ctx", contextType);
+		List<CtxHolder> ctxHolders = compileContextHolders(fqThisType, cw, pc, mv);
 		mv.visitInsn(RETURN);
-		Label l1 = new Label();
-		mv.visitLabel(l1);
-		mv.visitLocalVariable("this", Utils.asLName(fqThisType), null, l0, l1,
-				0);
+		
+		for (CtxHolder h : ctxHolders){
+			if (h.typedef != null){
+				compileNewTypedefHolder(h);	
+			} else {
+				compileFunctionClass(h);
+			}
+		}
+
+		fc.pop(mv, l0, true);
 		mv.visitMaxs(0, 0);
 		mv.visitEnd();
-
-		int itc = 0;
-		for (NativeImportContext nc : pc.nativeImport()) {
-			compileNative(cw, nc, itc++);
-		}
-
-		for (FunctionContext fc : pc.function()) {
-			compileFunction(cw, fc, itc++);
-		}
-
 		cw.visitEnd();
 
 		byte[] classData = cw.toByteArray();
-
-		PrintWriter pw = new PrintWriter(System.out);
-		try {
-			CheckClassAdapter.verify(new ClassReader(classData), cl, true, pw);
-		} catch (Throwable t) {
-			t.printStackTrace();
+		validateList.add(classData);
+		
+		
+		for (byte[] cd : validateList){
+			PrintWriter pw = new PrintWriter(System.out);
+			try {
+				CheckClassAdapter.verify(new ClassReader(cd), cl, true, pw);
+			} catch (Throwable t) {
+				t.printStackTrace();
+			}
 		}
 		
-		exportToTmp(classData, fqThisType);
-
+		fc.popFunctionBlock();
 		return classData;
+	}
+
+	private List<CtxHolder> compileContextHolders(String fq, ClassVisitor cw,
+			ProgramContext pc, MethodVisitor mv) {
+		
+		compileImports(cw, mv);
+		
+		List<CtxHolder> holderList = new ArrayList<CtxHolder>();
+		
+		for (TypedefContext tdc : pc.typedef()){
+			String typedefName = tdc.typedef_header().identifier().getText();
+			
+			TypeRepresentation type = new TypeRepresentation();
+			type.setType(SystemTypes.JRAWTYPE);
+			type.setFqTypeName(fqThisType+"." +typedefName+ "$Constructor");
+			
+			TypeRepresentation trr = new TypeRepresentation();
+			trr.setType(SystemTypes.CUSTOM);
+			trr.setFqTypeName((packageName.equals("") ? moduleName : packageName + "." + moduleName) + "." + typedefName);
+			type.setSimpleType(trr);
+			
+			FieldVisitor fv = cw.visitField(ACC_PUBLIC, typedefName, type.toJVMTypeString(), null, null);
+			fv.visitEnd();
+			
+			mv.visitVarInsn(ALOAD, 0);
+			mv.visitVarInsn(ALOAD, 0);
+			mv.visitTypeInsn(NEW, type.getJavaClassName());
+			mv.visitInsn(DUP);
+			mv.visitMethodInsn(INVOKESPECIAL, type.getJavaClassName(), "<init>", "(L" + fqThisType + ";)V", false);
+			
+			mv.visitFieldInsn(PUTFIELD, fc.getContextType().getJavaClassName(), typedefName, type.toJVMTypeString());
+			fc.addField(typedefName, typedefName, type);
+			
+			CtxHolder h = new CtxHolder();
+			h.name = typedefName;
+			h.typedef = tdc;
+			holderList.add(h);
+		}
+		
+		int order = 0;
+		Map<Object, Integer> orderMap = new HashMap<Object, Integer>();
+		Map<String, List<Object>> grouped = new HashMap<String, List<Object>>();
+		
+		for (NativeImportContext nc : pc.nativeImport()){
+			orderMap.put(nc, order++);
+			String name = nc.identifier().getText();
+			if (!grouped.containsKey(name))
+				grouped.put(name, new ArrayList<Object>());
+			grouped.get(name).add(nc);
+		}
+		
+		for (FunctionContext fc : pc.function()){
+			orderMap.put(fc, order++);
+			String name = fc.header().identifier().getText();
+			if (!grouped.containsKey(name))
+				grouped.put(name, new ArrayList<Object>());
+			grouped.get(name).add(fc);
+		}
+		
+		for (String groupName : grouped.keySet()){
+			String javaPath = fqThisType + "$" + Utils.asFuncJavaName(groupName);
+			TypeRepresentation type = new TypeRepresentation();
+			type.setType(SystemTypes.CALLABLE);
+			type.setFqTypeName(javaPath);
+			type.setCallableInfo(packageName.equals("") ? moduleName : packageName + "." + moduleName, groupName);
+			
+			FieldVisitor fv = cw.visitField(ACC_PUBLIC, groupName, "L"+javaPath+";", null, null);
+			fv.visitEnd();
+			
+			mv.visitVarInsn(ALOAD, 0);
+			mv.visitVarInsn(ALOAD, 0);
+			mv.visitTypeInsn(NEW, type.getJavaClassName());
+			mv.visitInsn(DUP);
+			mv.visitMethodInsn(INVOKESPECIAL, type.getJavaClassName(), "<init>", "(L" + fqThisType + ";)V", false);
+			
+			mv.visitFieldInsn(PUTFIELD, fc.getContextType().getJavaClassName(), groupName, type.toJVMTypeString());
+			fc.addField(groupName, groupName, type);
+			
+			CtxHolder h = new CtxHolder();
+			h.name = groupName;
+			h.functions = new ArrayList<FunctionContext>();
+			h.natives = new ArrayList<NativeImportContext>();
+			h.iords = new ArrayList<Integer>();
+			
+			for (Object o : grouped.get(groupName)){
+				if (o instanceof FunctionContext){
+					h.functions.add((FunctionContext) o);
+				} else {
+					h.natives.add((NativeImportContext) o);
+				}
+				h.iords.add(orderMap.get(o));
+			}
+			
+			holderList.add(h);
+		}
+		
+		return holderList;
+	}
+
+	private void compileImports(ClassVisitor cw, MethodVisitor mv) {
+		Set<String> types = new HashSet<String>();
+		
+		for (String fqType : imports.importMapOriginal.values()){
+			String typePath = Utils.splitByLastDot(fqType)[0];
+			types.add(typePath);
+		}
+		
+		List<String> typesList = new ArrayList<String>(types);
+		
+		int ordc = 0;
+		for (String type : typesList){
+			TypeRepresentation tr = new TypeRepresentation();
+			tr.setType(SystemTypes.JRAWTYPE);
+			tr.setFqTypeName(type);
+			
+			fc.addLocal("$m"+ordc, tr);
+			++ordc;
+			
+			mv.visitTypeInsn(NEW, BuildPath.getBuildPath().getClassPath(type));
+			mv.visitInsn(DUP);
+			mv.visitMethodInsn(INVOKESPECIAL, BuildPath.getBuildPath().getClassPath(type), "<init>", "()V", false);
+			CompilerUtils.addStore(mv, fc.autoToNum("$m"+(ordc-1)), tr);
+		}
+		
+		for (String iname : imports.importMapOriginal.keySet()){
+			String fqType = imports.importMapOriginal.get(iname);
+			String typePath = Utils.splitByLastDot(fqType)[0];
+			String element = Utils.splitByLastDot(fqType)[1];
+			
+			boolean isTypedef = BuildPath.getBuildPath().isTypedef(typePath, element);
+			
+			ordc = typesList.indexOf(typePath);
+			TypeRepresentation tr = new TypeRepresentation();
+			tr.setType(SystemTypes.JRAWTYPE);
+			tr.setFqTypeName(typePath);
+			
+			mv.visitVarInsn(ALOAD, 0); // load this
+			if (isTypedef){
+				TypeRepresentation type = new TypeRepresentation();
+				type.setType(SystemTypes.JRAWTYPE);
+				type.setFqTypeName(BuildPath.getBuildPath().getClassPath(fqType) + "$Constructor");
+				
+				TypeRepresentation trr = new TypeRepresentation();
+				trr.setType(SystemTypes.CUSTOM);
+				trr.setFqTypeName(fqType);
+				type.setSimpleType(trr);
+				
+				FieldVisitor fv = cw.visitField(ACC_PUBLIC, element, type.toJVMTypeString(), null, null);
+				fv.visitEnd();
+				
+				CompilerUtils.addLoad(mv, fc.autoToNum("$m"+ordc), tr);
+				mv.visitFieldInsn(GETFIELD, BuildPath.getBuildPath().getClassPath(typePath), element, type.toJVMTypeString());
+				mv.visitFieldInsn(PUTFIELD, fc.getContextType().getJavaClassName(), element, type.toJVMTypeString());
+				fc.addField(element, element, type);
+			} else {
+				String javaPath = BuildPath.getBuildPath().getClassPath(typePath) + "$" + Utils.asFuncJavaName(element);
+				TypeRepresentation type = new TypeRepresentation();
+				type.setType(SystemTypes.CALLABLE);
+				type.setFqTypeName(javaPath);
+				
+				FieldVisitor fv = cw.visitField(ACC_PUBLIC, element, "L"+javaPath+";", null, null);
+				fv.visitEnd();
+				
+				CompilerUtils.addLoad(mv, fc.autoToNum("$m"+ordc), tr);
+				mv.visitFieldInsn(GETFIELD, BuildPath.getBuildPath().getClassPath(typePath), element, "L"+javaPath+";");
+				mv.visitFieldInsn(PUTFIELD, fc.getContextType().getJavaClassName(), element, "L"+javaPath+";");
+				fc.addField(element, element, type);
+			}
+		}
+	}
+
+	private void compileFunctionClass(CtxHolder h) {
+		
+	}
+	
+
+	private void compileNewTypedefHolder(CtxHolder h) {
+		
 	}
 
 	/**
@@ -223,29 +428,17 @@ public class DisindentCompiler implements Opcodes {
 
 		for (TypedefContext tc : pc.typedef()) {
 			String typedefName = tc.typedef_header().identifier().getText();
-			String fqName = (packageName.equals("") ? moduleName : packageName
-					+ "." + moduleName)
-					+ "." + typedefName;
-			imports.add(typedefName, fqName);
-			imports.add(moduleName + "." + typedefName, fqName);
+			imports.remove(typedefName);
 		}
 
 		for (FunctionContext fc : pc.function()) {
 			String fncName = fc.header().identifier().getText();
-			String fqName = (packageName.equals("") ? moduleName : packageName
-					+ "." + moduleName)
-					+ "." + fncName;
-			imports.add(fncName, fqName);
-			imports.add(moduleName + "." + fncName, fqName);
+			imports.remove(fncName);
 		}
 
 		for (NativeImportContext nc : pc.nativeImport()) {
 			String fncName = nc.identifier().getText();
-			String fqName = (packageName.equals("") ? moduleName : packageName
-					+ "." + moduleName + ".")
-					+ fncName;
-			imports.add(fncName, fqName);
-			imports.add(moduleName + "." + fncName, fqName);
+			imports.remove(fncName);
 		}
 	}
 
@@ -279,12 +472,12 @@ public class DisindentCompiler implements Opcodes {
 		mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V",
 				false);
 
-		fc = new cz.upol.vanusanik.disindent.compiler.FunctionContext();
 		fc.pushNewFunc(null, null);
 		fc.push();
 		TypeRepresentation thisType = new TypeRepresentation();
+		thisType.setType(SystemTypes.JRAWTYPE);
 		thisType.setFqTypeName(fqTypedefPath);
-		fc.addLocal("this", thisType);
+		fc.addLocal("$this", thisType);
 
 		for (Field_declarationContext fdc : tdc.typedef_body()
 				.field_declaration()) {
@@ -311,7 +504,7 @@ public class DisindentCompiler implements Opcodes {
 
 		mv.visitInsn(RETURN);
 		fc.pop(mv, l0, true);
-		fc.popFunctionBlock();
+		fc.popFunctionBlock(); // TODO add contexts for types and their builders
 		mv.visitMaxs(0, 0);
 		mv.visitEnd();
 
@@ -319,29 +512,9 @@ public class DisindentCompiler implements Opcodes {
 
 		byte[] classData = cw.toByteArray();
 
-		PrintWriter pw = new PrintWriter(System.out);
-		try {
-			CheckClassAdapter.verify(new ClassReader(classData), cl, true, pw);
-		} catch (Throwable t) {
-			t.printStackTrace();
-		}
-		
-		exportToTmp(classData, fqJavaPath);
+		validateList.add(classData);
 
 		cl.addClass(fqJavaPath, classData);
-	}
-
-	private void exportToTmp(byte[] classData, String fqName) {
-		File f = new File("tmp");
-		if (f.exists()){
-			File expF = new File(f, fqName+".class");
-			expF.getParentFile().mkdirs();
-			try {
-				FileUtils.writeByteArrayToFile(expF, classData);
-			} catch (Exception e){
-				
-			}
-		}
 	}
 
 	/**
@@ -351,7 +524,7 @@ public class DisindentCompiler implements Opcodes {
 	 * @param nc
 	 * @param itc 
 	 */
-	private void compileNative(ClassWriter cw, NativeImportContext nc, int itc) {
+	private void compileNative(ClassWriter cw, NativeImportContext nc, int itc, ParentContext parent) {
 		String className = moduleName;
 		String fqType = Utils.slashify(nativePackage.equals("") ? className
 				: nativePackage + "." + className);
@@ -360,11 +533,10 @@ public class DisindentCompiler implements Opcodes {
 		TypeRepresentation retType = CompilerUtils.asType(nc.type(), imports);
 		
 		TypeRepresentation contextType = new TypeRepresentation();
-		contextType.setType(SystemTypes.CUSTOM);
+		contextType.setType(SystemTypes.JRAWTYPE);
 		contextType.setFqTypeName(((packageName.equals("") ? "" : packageName + ".") + moduleName) + "." + Utils.asContextName(nc.identifier().getText()) + itc);
 
 		typeList.add(retType);
-		fc = new cz.upol.vanusanik.disindent.compiler.FunctionContext();
 		fc.pushNewFunc(retType, contextType);
 		fc.push();
 		
@@ -385,8 +557,8 @@ public class DisindentCompiler implements Opcodes {
 		SignatureSpecifier sign = fcs.getSpecifier(nc.identifier().getText(),
 				typeList);
 
-		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, nc
-				.identifier().getText(), sign.javaSignature, null, null);
+		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC,
+				"invoke", sign.javaSignature, null, null);
 		mv.visitCode();
 		Label start = new Label();
 		mv.visitLineNumber(nc.start.getLine(), start);
@@ -407,44 +579,12 @@ public class DisindentCompiler implements Opcodes {
 		CompilerUtils.addReturn(mv, fc.getReturnType());
 
 		fc.pop(mv, start, true);
-		fc.popFunctionBlock();
+		ContextBlock cb = fc.popFunctionBlock();
 		
 		String fqPath = contextType.toJVMTypeString().substring(1);
 		fqPath = fqPath.substring(0, fqPath.length()-1);
 		
-		ClassWriter ctxCw = new ClassWriter(ClassWriter.COMPUTE_MAXS
-				| ClassWriter.COMPUTE_FRAMES);
-		ctxCw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, fqPath, null,
-				"java/lang/Object", new String[]{"java/io/Serializable"});
-		ctxCw.visitSource(filename, null);
-
-		MethodVisitor mv2 = ctxCw.visitMethod(ACC_PUBLIC, "<init>", "()V", null,
-				null);
-		mv2.visitCode();
-		Label l0 = new Label();
-		mv2.visitLabel(l0);
-		mv2.visitLineNumber(0, l0);
-		mv2.visitVarInsn(ALOAD, 0);
-		mv2.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "<init>", "()V",
-				false);
-		
-		mv2.visitInsn(RETURN);
-		mv2.visitMaxs(0, 0);
-		mv2.visitEnd();
-
-		ctxCw.visitEnd();
-
-		byte[] classData = ctxCw.toByteArray();
-
-		PrintWriter pw = new PrintWriter(System.out);
-		try {
-			CheckClassAdapter.verify(new ClassReader(classData), cl, true, pw);
-		} catch (Throwable t) {
-			t.printStackTrace();
-		}
-		
-		exportToTmp(classData, fqPath);
-		cl.addClass(fqPath, classData);
+		compileContext(fqPath, cb, parent);
 		
 		mv.visitMaxs(0, 0);
 		mv.visitEnd();
@@ -456,7 +596,7 @@ public class DisindentCompiler implements Opcodes {
 	 * @param cw
 	 * @param fc
 	 */
-	private void compileFunction(ClassWriter cw, FunctionContext fc, int itc) {
+	private void compileFunction(ClassWriter cw, FunctionContext fc, int itc, ParentContext parent) {
 		HeaderContext header = fc.header();
 		BlockContext body = fc.block();
 
@@ -465,11 +605,10 @@ public class DisindentCompiler implements Opcodes {
 				imports);
 		
 		TypeRepresentation contextType = new TypeRepresentation();
-		contextType.setType(SystemTypes.CUSTOM);
+		contextType.setType(SystemTypes.JRAWTYPE);
 		contextType.setFqTypeName(((packageName.equals("") ? "" : packageName + ".") + moduleName) + "." + Utils.asContextName(fc.header().identifier().getText()) + itc);
 
 		typeList.add(retType);
-		this.fc = new cz.upol.vanusanik.disindent.compiler.FunctionContext();
 		this.fc.pushNewFunc(retType, contextType);
 		this.fc.push();
 		
@@ -490,8 +629,7 @@ public class DisindentCompiler implements Opcodes {
 		SignatureSpecifier sign = fcs.getSpecifier(header.identifier()
 				.getText(), typeList);
 
-		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, header
-				.identifier().getText(), sign.javaSignature, null, null);
+		MethodVisitor mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "_invoke", sign.javaSignature, null, null);
 		mv.visitCode();
 		Label start = new Label();
 		mv.visitLineNumber(header.start.getLine(), start);
@@ -507,12 +645,18 @@ public class DisindentCompiler implements Opcodes {
 		CompilerUtils.addReturn(mv, this.fc.getReturnType());
 
 		this.fc.pop(mv, start, true);
-		this.fc.popFunctionBlock();
+		ContextBlock cb = this.fc.popFunctionBlock();
 		
-		// empty context type for func
 		String fqPath = contextType.toJVMTypeString().substring(1);
 		fqPath = fqPath.substring(0, fqPath.length()-1);
 		
+		compileContext(fqPath, cb, parent);
+		
+		mv.visitMaxs(0, 0);
+		mv.visitEnd();
+	}
+	
+	public void compileContext(String fqPath, ContextBlock cb, ParentContext parent){
 		ClassWriter ctxCw = new ClassWriter(ClassWriter.COMPUTE_MAXS
 				| ClassWriter.COMPUTE_FRAMES);
 		ctxCw.visit(V1_8, ACC_PUBLIC + ACC_SUPER, fqPath, null,
@@ -536,19 +680,9 @@ public class DisindentCompiler implements Opcodes {
 		ctxCw.visitEnd();
 
 		byte[] classData = ctxCw.toByteArray();
-
-		PrintWriter pw = new PrintWriter(System.out);
-		try {
-			CheckClassAdapter.verify(new ClassReader(classData), cl, true, pw);
-		} catch (Throwable t) {
-			t.printStackTrace();
-		}
+		validateList.add(classData);
 		
-		exportToTmp(classData, fqPath);
-		cl.addClass(fqPath, classData);
-		
-		mv.visitMaxs(0, 0);
-		mv.visitEnd();
+		cl.addClass(fqPath, classData);		
 	}
 
 	/**
@@ -923,8 +1057,8 @@ public class DisindentCompiler implements Opcodes {
 		TypeRepresentation returnType = null;
 
 		if (head.mathop() == null)
-			returnType = compileCall(mv, head.fqName().getText(), argList,
-					head.fqName().start.getLine());
+			returnType = compileCall(mv, head.atom(), argList,
+					head.atom().start.getLine());
 		else {
 			returnType = compileMath(mv, head.mathop().getText(), argList,
 					head.mathop().start.getLine(),
@@ -943,50 +1077,31 @@ public class DisindentCompiler implements Opcodes {
 	 * @param lineno
 	 * @return
 	 */
-	private TypeRepresentation compileCall(MethodVisitor mv, String fncName,
+	private TypeRepresentation compileCall(MethodVisitor mv, AtomContext ac,
 			List<TypeRepresentation> argList, int lineno) {
-		String fqPath = imports.importMapOriginal.get(fncName);
-		if (fqPath == null && fncName.contains("."))
-			fqPath = fncName;
-		if (fqPath == null)
-			throw new MalformedImportDeclarationException("function " + fncName
-					+ " is not defined");
-		String typeName = fqPath.substring(0, fqPath.lastIndexOf('.'));
-		String justTypeName = typeName;
-		String packageName = "";
-		if (typeName.contains(".")) {
-			packageName = typeName.substring(0, typeName.lastIndexOf('.'));
-			justTypeName = typeName.substring(typeName.lastIndexOf('.') + 1);
-		}
-
-		String[] split = Utils.splitByLastDot(fncName);
-		fncName = split[split.length - 1];
-
-		BuildPath bp = BuildPath.getBuildPath();
-		String cp = bp.getClassPath(typeName);
-		FunctionSignatures fc = bp.getSignatures(packageName, justTypeName);
 		
-		TypeRepresentation contextType = new TypeRepresentation();
-		contextType.setType(SystemTypes.CUSTOM);
-		argList.add(0, contextType);
-
-		if (fc == null || cp == null)
-			throw new MalformedImportDeclarationException("type " + typeName
-					+ " is not defined");
-
-		SignatureSpecifier fncSign = fc.findByParameters(fncName, argList);
-		if (fncSign == null)
-			throw new TypeException("function " + fncName
-					+ " has no signature for types " + argList
-					+ " or does not exist");
-
-		Label lc = new Label();
-		mv.visitLabel(lc);
-		mv.visitLineNumber(lineno, lc);
-		mv.visitMethodInsn(INVOKESTATIC, cp, fncName, fncSign.javaSignature,
-				false);
-
-		return fncSign.retType;
+		TypeRepresentation tr = compileAtom(mv, ac, true);
+		if (tr.getType() == SystemTypes.CALLABLE){
+			BuildPath bp = BuildPath.getBuildPath();
+			FunctionSignatures fc = bp.getSignatures(packageName, tr.getCallableName());
+			SignatureSpecifier sc = fc.findByParameters(tr.getCallableName(), argList);
+			if (sc == null){
+				throw new TypeException("function " + tr.getCallableName()
+						+ " has no signature for types " + argList
+						+ " or does not exist");
+			}
+			String invoker = BuildPath.getBuildPath().generateInvoker(argList);
+			mv.visitTypeInsn(CHECKCAST, invoker);
+			mv.visitMethodInsn(INVOKEDYNAMIC, invoker, "invoke", InvokerCompiler.generateDescription(argList), false);
+			return argList.get(0);
+		} else if (tr.getType() == SystemTypes.FUNCTION){
+			String invoker = BuildPath.getBuildPath().generateInvoker(argList);
+			mv.visitTypeInsn(CHECKCAST, invoker);
+			mv.visitMethodInsn(INVOKEDYNAMIC, invoker, "invoke", InvokerCompiler.generateDescription(argList), false);
+			return tr.getGenerics().get(0);
+		} else {
+			throw new TypeException("type " + tr + " cannot be called");
+		}
 	}
 
 	/**
@@ -1542,31 +1657,23 @@ public class DisindentCompiler implements Opcodes {
 				boolean clone = c.clone() != null;
 				List<AssignmentsContext> ac = clone ? c.clone().assignments()
 						: c.make().assignments();
-				FqNameContext typeFQName = clone ? c.clone().fqName() : c
-						.make().fqName();
+				AtomContext typeAtom = clone ? c.clone().typeatom().atom() : c
+						.make().typeatom().atom();
 
-				String tt = typeFQName.getText();
-				String fqPath = imports.importMapOriginal.get(tt);
-				if (fqPath == null && tt.contains("."))
-					fqPath = tt;
-				if (fqPath == null)
-					throw new MalformedImportDeclarationException("type " + tt
-							+ " is not defined");
-
-				TypeRepresentation tr = new TypeRepresentation();
-				tr.setType(SystemTypes.CUSTOM);
-				tr.setFqTypeName(fqPath);
-
-				mv.visitTypeInsn(NEW, tr.getJavaClassName());
-				mv.visitInsn(DUP);
-				mv.visitMethodInsn(INVOKESPECIAL, tr.getJavaClassName(),
-						"<init>", "()V", false);
+				TypeRepresentation tr = compileAtom(mv, typeAtom, true);
+				if (tr.getType() != SystemTypes.JRAWTYPE)
+					throw new TypeException("make/clone can only be called with type descriptor atom");
+				
+				mv.visitTypeInsn(CHECKCAST, "cz/upol/vanusanik/disindent/runtime/types/TypedefConstructor");
+				mv.visitMethodInsn(INVOKEDYNAMIC, "cz/upol/vanusanik/disindent/runtime/types/TypedefConstructor",
+						"construct", "()Ljava/lang/Object;", false);
+				mv.visitTypeInsn(CHECKCAST, tr.getSimpleType().getJavaClassName());
 
 				FieldSignatures fs = BuildPath.getBuildPath()
-						.getFieldSignatures(tr.getFqTypeName());
+						.getFieldSignatures(tr.getSimpleType().getFqTypeName());
 
 				if (fs == null)
-					throw new MalformedImportDeclarationException("type " + tt
+					throw new MalformedImportDeclarationException("type " + tr.getSimpleType()
 							+ " is not defined");
 
 				// clone fields

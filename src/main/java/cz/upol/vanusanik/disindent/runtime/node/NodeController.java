@@ -212,7 +212,7 @@ public class NodeController {
 				NetworkExecutor.setSocketForThread(s);
 				
 				try {
-					Method m = Method.makeFunction(input.getString("methodName", ""), storage.bp.getClassLoader().findClass(input.getString("runnerClass", "")));
+					Method m = NetworkUtils.deserialize(input.getString("method", null), Method.class);
 					Object[] a = new Object[args.size() + 1];
 					int it = 0;
 					

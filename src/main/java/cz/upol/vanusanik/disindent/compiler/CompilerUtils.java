@@ -35,14 +35,31 @@ public class CompilerUtils implements Opcodes {
 
 		tr = TypeRepresentation.asSimpleType(tt);
 		if (tr == null) {
-			String fqPath = imports.importMapOriginal.get(tt);
-			if (fqPath == null)
-				throw new MalformedImportDeclarationException("type " + tt
-						+ " is not defined");
-
-			tr = new TypeRepresentation();
-			tr.setType(SystemTypes.CUSTOM);
-			tr.setFqTypeName(fqPath);
+			if (type.typepart().generic_type() != null){
+				tr = new TypeRepresentation();
+				tr.setType(SystemTypes.FUNCTION);
+				for (TypeContext tc : type.typepart().generic_type().type()){
+					tr.addGenerics(asType(tc, imports));
+				}
+			}
+			
+			if (type.typepart().constructor_type() != null){
+				tr = new TypeRepresentation();
+				tr.setType(SystemTypes.JRAWTYPE);
+				TypeContext tc = type.typepart().constructor_type().type();
+				tr.setSimpleType(asType(tc, imports));
+			}
+			
+			if (tr == null){
+				String fqPath = imports.importMapOriginal.get(tt);
+				if (fqPath == null)
+					throw new MalformedImportDeclarationException("type " + tt
+							+ " is not defined");
+	
+				tr = new TypeRepresentation();
+				tr.setType(SystemTypes.CUSTOM);
+				tr.setFqTypeName(fqPath);
+			}
 		}
 
 		for (@SuppressWarnings("unused")
@@ -105,9 +122,13 @@ public class CompilerUtils implements Opcodes {
 		case ANY:
 		case COMPLEX:
 		case CUSTOM:
+		case JRAWTYPE:
 		case FUNCTION:
+		case CALLABLE:
 		case STRING:
 			mv.visitVarInsn(ALOAD, id);
+			break;
+		default:
 			break;
 		}
 	}
@@ -142,6 +163,8 @@ public class CompilerUtils implements Opcodes {
 		case CUSTOM:
 		case FUNCTION:
 		case STRING:
+		case JRAWTYPE:
+		case CALLABLE:
 			mv.visitVarInsn(ASTORE, id);
 			break;
 		}
@@ -169,6 +192,8 @@ public class CompilerUtils implements Opcodes {
 		case CUSTOM:
 		case FUNCTION:
 		case STRING:
+		case JRAWTYPE:
+		case CALLABLE:
 			mv.visitInsn(ARETURN);
 			break;
 		}
@@ -240,6 +265,8 @@ public class CompilerUtils implements Opcodes {
 			case ANY:
 			case COMPLEX:
 			case CUSTOM:
+			case JRAWTYPE:
+			case CALLABLE:
 				break;
 
 			case BOOL:

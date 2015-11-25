@@ -47,7 +47,7 @@ public class InvokerCompiler implements Opcodes {
 		cl.addClass(invokerBaseName + requestedType, classData);
 	}
 
-	private String generateDescription(List<TypeRepresentation> types) {
+	public static String generateDescription(List<TypeRepresentation> types) {
 		TypeRepresentation returnType = types.get(0);
 		types.remove(0);
 		String description = "(";
@@ -78,6 +78,9 @@ public class InvokerCompiler implements Opcodes {
 			tr.setSimpleType(asType(identificator.substring(1)));
 			return tr;
 		} 
+		case 'j': {
+			return bp.getOrderType(Integer.parseInt(identificator.substring(1)));
+		}
 		case 'C': {
 			return bp.getOrderType(Integer.parseInt(identificator.substring(1)));
 		}

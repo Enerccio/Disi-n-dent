@@ -72,4 +72,8 @@ public class Imports implements Serializable {
 		
 		add(packagePath, moduleName, object, object);
 	}
+
+	public void remove(String x) {
+		importMapOriginal.remove(x);
+	}
 }

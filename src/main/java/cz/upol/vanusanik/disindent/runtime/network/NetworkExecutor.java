@@ -53,6 +53,7 @@ public class NetworkExecutor {
     	}
     	final String bp = NetworkUtils.serialize(BuildPath.getBuildPath());
     	final String bpUid = BuildPath.getBuildPath().getUid();
+    	final String serf = NetworkUtils.serialize(f);
 		
     	for (int i = 0; i < tCount; i++) {
 			final int tId = i;
@@ -65,7 +66,7 @@ public class NetworkExecutor {
 							result,
 							getOrFail(nodes, tId),
 							transformed,
-							f, bp, bpUid,
+							serf, bp, bpUid,
 							tCount);
 				}
 
@@ -93,7 +94,7 @@ public class NetworkExecutor {
 
 	private static void handleDistributedCall(int tId,
 			NetworkExecutionResult result, Node node,
-			List<String> arguments, Method f, String bp, String bpUid, int tCount) {
+			List<String> arguments, String f, String bp, String bpUid, int tCount) {
 		
 		boolean executed = false;
 		int rqc = 0;
@@ -149,8 +150,9 @@ public class NetworkExecutor {
 						new JsonObject()
 								.add("uid", bpUid)
 								.add("buildPath", needsBP ? bp : "")
-								.add("runnerClass", f.clazz.getName()).add("args", args)
-								.add("id", tId).add("methodName", f.methodName));
+								.add("args", args)
+								.add("id", tId).
+								add("method", f));
 				Protocol.send(s.getOutputStream(), payload);
 
 				while (true){

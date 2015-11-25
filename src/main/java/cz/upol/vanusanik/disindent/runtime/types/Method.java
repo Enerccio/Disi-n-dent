@@ -6,28 +6,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import cz.upol.vanusanik.disindent.utils.Utils;
-
 /**
  * Wraps java.lang.reflect.Method into custom Method class
  * @author Peter Vanusanik
  *
  */
-public class Method implements Serializable {
+public abstract class Method implements Serializable {
 	private static final long serialVersionUID = 5071105035981928495L;
-	
-	/** method name */
-	public String methodName;
-	/** bound class */
-	public Class<?> clazz;
-	/** bound context */
-	public Object context;
 	
 	private transient Map<List<Class<?>>, java.lang.reflect.Method> handles
 		= new HashMap<List<Class<?>>, java.lang.reflect.Method>();
 	
 	public Object invoke(Object... parameters) throws Throwable {
-		parameters = Utils.prepend(context, parameters);
 		
 		Class<?>[] classes = new Class<?>[parameters.length];
     	for (int i=0; i<parameters.length; i++)
@@ -49,8 +39,8 @@ public class Method implements Serializable {
 	 */
 	private java.lang.reflect.Method getMethod(Class<?>... parameters) throws NoSuchMethodException {
 		cont:
-		for (java.lang.reflect.Method m : clazz.getMethods()){
-			if (m.getName().equals(methodName)){
+		for (java.lang.reflect.Method m : getClass().getMethods()){
+			if (m.getName().equals("invoke")){
 				if (m.getParameterCount() != parameters.length)
 					continue;
 				for (int i=0; i<m.getParameterCount(); i++){
@@ -87,16 +77,4 @@ public class Method implements Serializable {
 		throw new NoSuchMethodException();
 	}
 
-	/**
-	 * Creates new instance of Method object with specified name and bound clazz
-	 * @param name
-	 * @param clazz
-	 * @return
-	 */
-	public static Method makeFunction(String name, Class<?> clazz){
-		Method m = new Method();
-		m.methodName = name;
-		m.clazz = clazz;
-		return m;
-	}
 }

@@ -67,6 +67,12 @@ public class FunctionContext {
 			++ctxStack.get(0).ordering;
 	}
 	
+
+	public void addField(String element, String accessor, TypeRepresentation type) {
+		ctxStack.get(0).closureAccessor.put(element, accessor);
+		ctxStack.get(0).closureVariable.put(element, type);
+	}
+	
 	public boolean isLocal(String name){
 		return isLocal(name, ctxStack);
 	}
@@ -205,4 +211,5 @@ public class FunctionContext {
 				fb.ordering = min;
 		}
 	}
+
 }

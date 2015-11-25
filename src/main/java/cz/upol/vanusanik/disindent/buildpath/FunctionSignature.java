@@ -144,19 +144,6 @@ public class FunctionSignature implements Serializable {
 		
 		TypeRepresentation parameter = parameters.get(0);
 		
-		if (parameter.getType() == SystemTypes.CUSTOM && parameter.getFqTypeName() == null){
-			// placeholder context type
-			
-			for (TypeRepresentation tr : subsignatures.keySet()){
-				SignatureSpecifier ret = subsignatures.get(tr).byParameters(parameters.subList(1, parameters.size()), false);
-				if (ret != null){
-					parameter.setFqTypeName(tr.getFqTypeName());
-					return ret;
-				}
-			}
-			return null;
-		}
-		
 		if (subsignatures.containsKey(parameter)){
 			return subsignatures.get(parameter).byParameters(parameters.subList(1, parameters.size()), false);
 		}

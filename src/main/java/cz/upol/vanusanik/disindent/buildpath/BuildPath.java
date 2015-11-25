@@ -302,8 +302,12 @@ public class BuildPath implements Serializable {
 			typedefType.setFqTypeName((ae.modulePackage.equals("") ? "" : (ae.modulePackage + ".")) + ae.elementDinName + "." + te.elementDinName);
 			registerType(typedefType);
 			
-			loadTypedef(te, tc, imports);
+			TypeRepresentation typedefConstructorType = new TypeRepresentation();
+			typedefConstructorType.setType(SystemTypes.JRAWTYPE);
+			typedefConstructorType.setFqTypeName(ae.slashPackage + "/" + te.elementName + "$Constructor");
+			registerType(typedefConstructorType);
 			
+			loadTypedef(te, tc, imports);
 			
 
 			availableElements.put(ae.slashPackage.equals("") ? te.elementName
@@ -371,14 +375,43 @@ public class BuildPath implements Serializable {
 
 		tr = TypeRepresentation.asSimpleType(tt);
 		if (tr == null) {
-			String fqPath = imports.get(tt);
-			if (fqPath == null)
-				fqPath = tt;
-
-			tr = new TypeRepresentation();
-			tr.setType(SystemTypes.CUSTOM);
-			tr.setFqTypeName(fqPath);
-			validatorSet.add(new TypeValidator(mae, tr));
+			if (fc.typepart().generic_type() != null){
+				tr = new TypeRepresentation();
+				tr.setType(SystemTypes.FUNCTION);
+				for (TypeContext tc : fc.typepart().generic_type().type()){
+					TypepartContext typepc = tc.typepart();
+					String tt2;
+					if (typepc.fqName() != null)
+						tt2 = typepc.fqName().getText();
+					else
+						tt2 = typepc.getText();
+					tr.addGenerics(asType(tt2, tc, imports, mae));
+				}
+			}
+			
+			if (fc.typepart().constructor_type() != null){
+				tr = new TypeRepresentation();
+				tr.setType(SystemTypes.JRAWTYPE);
+				TypeContext tc = fc.typepart().constructor_type().type();
+				TypepartContext typepc = tc.typepart();
+				String tt2;
+				if (typepc.fqName() != null)
+					tt2 = typepc.fqName().getText();
+				else
+					tt2 = typepc.getText();
+				tr.setSimpleType(asType(tt2, fc, imports, mae));
+			}
+			
+			if (tr == null){	
+				String fqPath = imports.get(tt);
+				if (fqPath == null)
+					fqPath = tt;
+	
+				tr = new TypeRepresentation();
+				tr.setType(SystemTypes.CUSTOM);
+				tr.setFqTypeName(fqPath);
+				validatorSet.add(new TypeValidator(mae, tr));
+			}
 		}
 
 		for (@SuppressWarnings("unused")
@@ -432,9 +465,6 @@ public class BuildPath implements Serializable {
 				Func_argumentsContext.class, p).get(0);
 
 		String baseName = name.getText();
-		TypeRepresentation contextType = new TypeRepresentation();
-		contextType.setType(SystemTypes.CUSTOM);
-		contextType.setFqTypeName(((ae.modulePackage.equals("") ? "" : ae.modulePackage + ".") + ae.elementDinName) + "." + Utils.asContextName(baseName) + itc);
 		
 		List<TypeContext> types = new ArrayList<TypeContext>();
 
@@ -458,7 +488,6 @@ public class BuildPath implements Serializable {
 
 			trl.add(asType(tt, t, imports, ae));
 		}
-		trl.add(1, contextType);
 
 		ae.functionSignatures.addFunction(baseName, trl);
 	}
@@ -502,6 +531,10 @@ public class BuildPath implements Serializable {
 			String moduleName) {
 		String fqName = packageName.equals("") ? moduleName : packageName + "."
 				+ moduleName;
+		return getSignaturesForName(fqName);
+	}
+	
+	public FunctionSignatures getSignaturesForName(String fqName) {
 		AvailableElement ae = bpElements.get(fqName);
 		if (ae != null)
 			return ae.functionSignatures;
@@ -565,6 +598,14 @@ public class BuildPath implements Serializable {
 	
 	public TypeRepresentation getOrderType(int order){
 		return orderingToType.get(order);
+	}
+
+	public boolean isTypedef(String typePath, String element) {
+		AvailableElement ae = bpElements.get(typePath + "." + element);
+		if (ae != null){
+			return true;
+		}
+		return false;
 	}
 
 }

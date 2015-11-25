@@ -198,11 +198,11 @@ arguments:
 	;
 	
 simple_op:
-	head '(' simple_arguments? ')'
+	'call' head '(' simple_arguments? ')'
 	;
 	
 head:
-	fqName | mathop
+	atom | mathop
 	;
 	
 mathop:
@@ -256,25 +256,20 @@ constArg:
 	| 'none'
 	| 'true'
 	| 'false'
-	| funcptr	
 ;
-
-funcptr:
-	'&' funcdesignator
-	;
-	
-funcdesignator:
-	fqName
-	;
 	
 make:
-	('make' fqName 'with' '(' assignments? ')') |
-	('make' fqName 'with' INDENT (assignments NEWLINE)* assignments DEDENT)
+	('make' typeatom 'with' '(' assignments? ')') |
+	('make' typeatom 'with' INDENT (assignments NEWLINE)* assignments DEDENT)
 	;
 
 clone:
-	('clone' fqName '<' atom '>' 'with' '(' assignments? ')') |
-	('clone' fqName '<' atom '>' 'with' INDENT (assignments NEWLINE)* assignments DEDENT)
+	('clone' atom '<' typeatom '>' 'with' '(' assignments? ')') |
+	('clone' atom '<' typeatom '>' 'with' INDENT (assignments NEWLINE)* assignments DEDENT)
+	;
+	
+typeatom:
+	atom
 	;
 	
 assignments:
@@ -303,8 +298,17 @@ typepart:
 	| 'float' 
 	| 'string' 
 	| 'any' 
-	| 'function' 
+	| generic_type
+	| constructor_type
 	| fqName
+	;
+	
+constructor_type:
+	'c:' type
+	;
+	
+generic_type:
+	'->' type '(' (type ',')* type? ')'
 	;
 	
 typedef:

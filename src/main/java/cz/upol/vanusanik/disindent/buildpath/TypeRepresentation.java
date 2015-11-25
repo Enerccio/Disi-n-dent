@@ -25,7 +25,7 @@ public class TypeRepresentation implements Serializable {
 	 */
 	public enum SystemTypes {
 		BOOL, BYTE, SHORT, INT, FLOAT, LONG, DOUBLE, 
-		STRING, FUNCTION, COMPLEX, CUSTOM, ANY, 
+		STRING, FUNCTION, COMPLEX, CUSTOM, ANY, JRAWTYPE, CALLABLE
 	}
 	
 	public TypeRepresentation(){
@@ -45,7 +45,7 @@ public class TypeRepresentation implements Serializable {
 	public static final TypeRepresentation DOUBLE = new TypeRepresentation(SystemTypes.DOUBLE);
 	public static final TypeRepresentation STRING = new TypeRepresentation(SystemTypes.STRING);
 	public static final TypeRepresentation ANY = new TypeRepresentation(SystemTypes.ANY);
-	public static final TypeRepresentation NULL = new TypeRepresentation(null);;
+	public static final TypeRepresentation NULL = new TypeRepresentation(null);
 	
 	static Map<String, TypeRepresentation> simpleTypeMap
 		= new HashMap<String, TypeRepresentation>();
@@ -151,14 +151,14 @@ public class TypeRepresentation implements Serializable {
 	 * @return whether this type is complex type
 	 */
 	public boolean isComplexType(){
-		return simpleType != null;
+		return type == SystemTypes.COMPLEX && simpleType != null;
 	}
 	
 	/**
 	 * @return whether this type is custom type 
 	 */
 	public boolean isCustomType(){
-		return fqTypeName != null && (fqTypeName.contains(".") || !StringUtils.isAllLowerCase(fqTypeName.subSequence(0, 1)));
+		return type == SystemTypes.CUSTOM && fqTypeName != null && (fqTypeName.contains(".") || !StringUtils.isAllLowerCase(fqTypeName.subSequence(0, 1)));
 	}
 	
 	/**
@@ -166,6 +166,11 @@ public class TypeRepresentation implements Serializable {
 	 * @return jvm version
 	 */
 	public String toJVMTypeString(){
+		if (type == SystemTypes.JRAWTYPE)
+			return "L" + getFqTypeName() + ";";
+		if (type == SystemTypes.CALLABLE)
+			return "L" + getFqTypeName() + ";";
+		
 		if (isCustomType()){
 			String[] components = StringUtils.split(fqTypeName, ".");
 			String typename = components[components.length-1];
@@ -264,12 +269,15 @@ public class TypeRepresentation implements Serializable {
 			return "double";
 		case FLOAT:
 			return "float";
+		case CALLABLE:
 		case FUNCTION:
 			return "Method";
 		case INT:
 			return "int";
 		case LONG:
 			return "long";
+		case JRAWTYPE:
+			return "Object"; // TODO instancer
 		default:
 		case STRING:
 			return "String";
@@ -300,12 +308,15 @@ public class TypeRepresentation implements Serializable {
 			return "D";
 		case FLOAT:
 			return "F";
+		case CALLABLE:
 		case FUNCTION:
 			return "Lcz/upol/vanusanik/disindent/runtime/types/Method;";
 		case INT:
 			return "I";
 		case LONG:
 			return "J";
+		case JRAWTYPE:
+			return "Ljava/lang/Object;"; // TODO instancer
 		default:
 		case STRING:
 			return "Ljava/lang/String;";
@@ -356,6 +367,8 @@ public class TypeRepresentation implements Serializable {
 			return "C" + new Integer(BuildPath.getBuildPath().getTypeOrder(this)).toString();
 		
 		switch (type){
+		case JRAWTYPE:
+			return "j";
 		case ANY:
 			return "A";
 		case BOOL:
@@ -374,9 +387,35 @@ public class TypeRepresentation implements Serializable {
 			return "I";
 		case LONG:
 			return "J";
+		case CALLABLE:
+			return null; // must not happen
 		default:
 		case STRING:
 			return "s";
 		}
+	}
+
+	private String moduleDinPath;
+	private String callableName;
+	
+	public void setCallableInfo(String moduleDinPath, String callableName) {
+		this.setModuleDinPath(moduleDinPath);
+		this.setCallableName(callableName);
+	}
+
+	public String getModuleDinPath() {
+		return moduleDinPath;
+	}
+
+	private void setModuleDinPath(String moduleDinPath) {
+		this.moduleDinPath = moduleDinPath;
+	}
+
+	public String getCallableName() {
+		return callableName;
+	}
+
+	private void setCallableName(String callableName) {
+		this.callableName = callableName;
 	}
 }
