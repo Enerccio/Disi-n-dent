@@ -39,6 +39,10 @@ class AvailableElement implements Comparable<AvailableElement>, Serializable {
 	FunctionSignatures functionSignatures = new FunctionSignatures();
 	/** Typedefs stored here, empty for typedefs */
 	Set<String> typedefs = new HashSet<String>();
+	/** Represents native path, null for typedefs */
+	String nativePath;
+	/** whether this typedef is a typedef and native or neither */
+	boolean nativeTypedef = false;
 	
 	@Override
 	public int compareTo(AvailableElement o) {

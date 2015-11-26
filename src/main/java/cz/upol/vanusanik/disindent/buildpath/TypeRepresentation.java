@@ -25,7 +25,8 @@ public class TypeRepresentation implements Serializable {
 	 */
 	public enum SystemTypes {
 		BOOL, BYTE, SHORT, INT, FLOAT, LONG, DOUBLE, 
-		STRING, FUNCTION, COMPLEX, CUSTOM, ANY, CONSTRUCTABLE, CALLABLE
+		STRING, FUNCTION, COMPLEX, CUSTOM, ANY, 
+		CONSTRUCTABLE, CALLABLE, NATIVE
 	}
 	
 	public TypeRepresentation(){
@@ -189,6 +190,8 @@ public class TypeRepresentation implements Serializable {
 			return "Lcz/upol/vanusanik/disindent/runtime/types/DList;";
 		
 		switch (type){
+		case NATIVE:
+			return "L"+getFqTypeName()+";";
 		case ANY:
 			return "Ljava/lang/Object;";
 		case BOOL:
@@ -257,6 +260,8 @@ public class TypeRepresentation implements Serializable {
 		}
 		
 		switch (type){
+		case NATIVE:
+			return "Object";
 		case ANY:
 			return "Object";
 		case BOOL:
@@ -296,6 +301,8 @@ public class TypeRepresentation implements Serializable {
 			return "Lcz/upol/vanusanik/disindent/runtime/types/DList;";
 		
 		switch (type){
+		case NATIVE:
+			return "Ljava/lang/Object;";
 		case ANY:
 			return "Ljava/lang/Object;";
 		case BOOL:
@@ -367,6 +374,8 @@ public class TypeRepresentation implements Serializable {
 			return "C" + new Integer(BuildPath.getBuildPath().getTypeOrder(this)).toString();
 		
 		switch (type){
+		case NATIVE:
+			return "N" + new Integer(BuildPath.getBuildPath().getTypeOrder(this)).toString();
 		case CONSTRUCTABLE:
 			return "j";
 		case ANY:

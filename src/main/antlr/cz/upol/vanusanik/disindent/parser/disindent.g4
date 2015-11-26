@@ -3,6 +3,7 @@ grammar disindent;
 program:
 	( package_decl
 	| native_decl
+	| native_type
 	| use_decl
 	| include_decl
 	| func_decl
@@ -13,19 +14,23 @@ EOF
 ;
 
 package_decl:
-	'(package' complex_identifier ')'
+	'(' 'package' complex_identifier ')'
 ;
 
 native_decl:
-	'(native' complex_identifier ')'
+	'(' 'native' complex_identifier ')'
 ;
+
+native_type:
+	'(' 'native' 'type' identifier ')'
+	; 
 
 use_decl:
 	'(use' complex_identifier ')'
 ;
 
 include_decl:
-	'(include' include_list 'from' complex_identifier ')'
+	'(' 'include' include_list 'from' complex_identifier ')'
 ;
 
 include_list:
@@ -33,11 +38,11 @@ include_list:
 ;
 
 func_decl:
-	'(def' fqtype '[' formal_params? ']' block ')'
+	'(' 'def' fqtype '[' formal_params? ']' block ')'
 ;
 
 funn_decl:
-	'(defn' fqtype '[' formal_params? ']' block ')'
+	'(' 'defn' fqtype '[' formal_params? ']' block ')'
 ;
 
 formal_params:
@@ -45,7 +50,7 @@ formal_params:
 ;
 
 type_decl:
-	'(deft' identifier type_body+ ')'
+	'(' 'deft' identifier type_body+ ')'
 ;
 
 type_body:
@@ -63,15 +68,15 @@ complex_expression:
 ;
 
 if_expression:
-	'(if' expression expression expression? ')'
+	'(' 'if' expression expression expression? ')'
 ;
 
 for_expression:
-	'(for' '(' '(' identifier? fqtype ')' expression expression expression ')' block ')'
+	'(' 'for' '(' '(' identifier? fqtype ')' expression expression expression ')' block ')'
 ;
 
 lambda_expression:
-	'(fnc' '->' type '[' formal_params? ']' block ')'
+	'(' 'fnc' '->' type '[' formal_params? ']' block ')'
 ;
 
 expression:
@@ -102,7 +107,7 @@ compop:
 ;
 
 const_list:
-	'(->' type '[' expression* ']' ')'
+	'(' '->' type '[' expression* ']' ')'
 ;
 
 const_arg:

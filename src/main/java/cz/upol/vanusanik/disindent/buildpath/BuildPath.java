@@ -20,6 +20,7 @@ import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Func_declCo
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Funn_declContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.IdentifierContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Include_declContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Native_typeContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ProgramContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypeContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Type_bodyContext;
@@ -202,14 +203,21 @@ public class BuildPath implements Serializable {
 			byte[] source) {
 		ProgramContext pc = p.program();
 		String packagePath = "";
+		String nativePath = "";
 
 		if (pc.package_decl().size() > 1){
 			throw new BuildPathException("multiple package declarations in one file");
 		}
+		if (pc.native_decl().size() > 1){
+			throw new BuildPathException("multiple native package declarations in one file");
+		}
 			
 		if (pc.package_decl().size() == 1)
 			packagePath = pc.package_decl(0).complex_identifier().getText().replace("::", ".");
-
+		if (pc.native_decl().size() == 1){
+			nativePath = pc.native_decl(0).complex_identifier().getText().replace("::", ".");
+		}
+		
 		Map<String, String> imports = parseImports(pc, name, packagePath);
 
 		String slashPath = Utils.slashify(packagePath);
@@ -221,9 +229,11 @@ public class BuildPath implements Serializable {
 		ae.elementDinName = name;
 		ae.elementName = Utils.asModuledefJavaName(name);
 		ae.slashPackage = slashPath;
+		ae.nativePath = nativePath;
 
 		loadTypedefs(ae, pc, imports);
 		loadFunctions(ae, pc, imports);
+		loadNatives(ae, pc, imports);
 
 		availableElements.put(slashPath.equals("") ? ae.elementName : slashPath
 				+ "/" + ae.elementName, ae);
@@ -262,6 +272,15 @@ public class BuildPath implements Serializable {
 					+ "." + typedefName;
 			iMap.put(typedefName, fqName);
 		}
+		
+		for (Native_typeContext ntc : pc.native_type()){
+			String typedefName = ntc.identifier().getText();
+			String fqName = (selfPackage.equals("") ? selfModule : selfPackage
+					+ "." + selfModule)
+					+ "." + typedefName;
+			iMap.put(typedefName, fqName);
+		}
+		
 		return iMap;
 	}
 
@@ -302,7 +321,36 @@ public class BuildPath implements Serializable {
 			loadTypedef(te, tc, imports);
 
 			availableElements.put(ae.slashPackage.equals("") ? te.elementName
-					: ae.slashPackage + "/" + te.elementName, ae);
+					: ae.slashPackage + "/" + te.elementName, te);
+			bpElements.put((ae.modulePackage.equals("") ? ae.elementDinName
+					: ae.modulePackage + "." + ae.elementDinName)
+					+ "."
+					+ te.elementDinName, te);
+		}
+	}
+	
+	private void loadNatives(AvailableElement ae, ProgramContext pc,
+			Map<String, String> imports){
+		
+		for (Native_typeContext ntc : pc.native_type()) {
+			AvailableElement te = new AvailableElement();
+			te.elementDinName = ntc.identifier().getText();
+			te.elementName = Utils.camelify(te.elementDinName);
+			te.modulePackage = ae.modulePackage;
+			te.slashPackage = ae.slashPackage;
+			te.module = ae;
+			te.nativePath = ae.nativePath + "/" + te.elementName;
+			te.nativeTypedef = true;
+			if (ae.typedefs.contains(te.elementDinName))
+				throw new BuildPathException("duplicate typedef name");
+			ae.typedefs.add(te.elementDinName);
+
+			TypeRepresentation typedefType = new TypeRepresentation();
+			typedefType.setType(SystemTypes.NATIVE);
+			typedefType.setFqTypeName(te.nativePath);
+			registerType(typedefType);
+			
+			availableElements.put(te.nativePath, te);
 			bpElements.put((ae.modulePackage.equals("") ? ae.elementDinName
 					: ae.modulePackage + "." + ae.elementDinName)
 					+ "."

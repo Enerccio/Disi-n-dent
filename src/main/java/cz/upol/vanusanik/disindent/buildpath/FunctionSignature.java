@@ -45,7 +45,6 @@ public class FunctionSignature implements Serializable {
 			this.selfType.setType(SystemTypes.FUNCTION);
 			
 			specList = new ArrayList<TypeRepresentation>(specList);
-			specList.remove(1); // remove context specifier because it is irrelevant in invoking
 			for (TypeRepresentation tr : specList)
 				this.selfType.addGenerics(tr);
 			

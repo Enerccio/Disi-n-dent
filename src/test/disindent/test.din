@@ -1,4 +1,5 @@
 (use me::enerccio::test::test2)
+(use me::enerccio::test::test2::bartable)
 
 (defn foo->int [a->int b->int]
 	(+ a b))
@@ -7,3 +8,5 @@
 	(make (test2::foobar b) 
 		(x 10)
 		(y a)))
+		
+(defn foo3->bartable [] )

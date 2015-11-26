@@ -1,4 +1,7 @@
 (package me::enerccio::test)
+(native foo::bar)
+
+(native type bartable)
 
 (deft foobar
 	x->int

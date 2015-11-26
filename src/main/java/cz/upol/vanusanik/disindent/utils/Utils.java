@@ -262,4 +262,13 @@ public class Utils {
 			return StringUtils.join(combiner, splitter);
 		}
 	}
+
+	public static String camelify(String element) {
+		String[] elements = StringUtils.split(element, "_");
+		List<String> filter = new ArrayList<String>();
+		for (String e : elements)
+			if (!e.equals(""))
+				filter.add(StringUtils.capitalize(e));
+		return StringUtils.join(filter, "");
+	}
 }
