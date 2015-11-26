@@ -1,0 +1,6 @@
+(package me::enerccio::test)
+
+(deft foobar
+	x->int
+	y->string
+	(z->long 34l))

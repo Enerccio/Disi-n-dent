@@ -1,7 +1,0 @@
-in me.test
-native package a.b.c.d.e
-
-int native func1(foo is string, bar is int)
-foo native func2(aaa is any)
-bool native func3()
-float[][] native func4(something is kaz[], vel is long, xxx is double, func is function[])

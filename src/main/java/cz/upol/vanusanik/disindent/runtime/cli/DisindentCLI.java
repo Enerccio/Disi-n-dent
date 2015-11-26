@@ -48,7 +48,7 @@ public class DisindentCLI {
 		File workingDir = no.sourcesDirectory;
 		DisindentThread.simpleStart(workingDir.getAbsolutePath());
 
-		String execFunc = no.main.get(0);
+		String execFunc = no.main.get(0).replace("::", ".");
 
 		// transforms arguments passed into cli into PLangObjects
 		Object[] args = loadArgs(no.initialFuncArgs);

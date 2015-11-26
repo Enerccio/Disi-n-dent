@@ -84,6 +84,7 @@ public class InvokerCompiler implements Opcodes {
 		case 'C': {
 			return bp.getOrderType(Integer.parseInt(identificator.substring(1)));
 		}
+		case 'c': return TypeRepresentation.CALLABLE_OBJREF;
 		case 'A': return TypeRepresentation.ANY;
 		case 'Z': return TypeRepresentation.BOOL;
 		case 'B': return TypeRepresentation.BYTE;

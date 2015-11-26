@@ -1,0 +1,3 @@
+% this module is referenced by every module including self
+
+(native cz::upol::vanusanik::disindent::runtime::natives)

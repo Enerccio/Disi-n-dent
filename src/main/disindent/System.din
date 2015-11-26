@@ -1,5 +1,0 @@
-native package cz.upol.vanusanik.disindent.runtime.natives
-% this module is referenced by every module including self
-
-double xxx()
-	0

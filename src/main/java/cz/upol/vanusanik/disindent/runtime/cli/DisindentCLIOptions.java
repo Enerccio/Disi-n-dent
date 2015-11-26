@@ -20,7 +20,7 @@ public class DisindentCLIOptions {
 	@Parameter(required = false, names = { "-s", "--use-ssl" }, description = "Whether or not to use SSL")
 	public boolean useSSL;
 
-	@Parameter(required = true, arity = 1, description = "fully qualified path to the function to be executed (ie com.example.Foobar.baz)")
+	@Parameter(required = true, arity = 1, description = "fully qualified path to the function to be executed (ie com::example::Foobar::baz)")
 	public List<String> main = new ArrayList<String>();
 
 	@Parameter(names = { "-ia", "--init-args" }, description = "You can specify number only parameters that will be applied to your starting function as arguments in this as string enclosed by \"\".")

@@ -25,7 +25,7 @@ public class TypeRepresentation implements Serializable {
 	 */
 	public enum SystemTypes {
 		BOOL, BYTE, SHORT, INT, FLOAT, LONG, DOUBLE, 
-		STRING, FUNCTION, COMPLEX, CUSTOM, ANY, JRAWTYPE, CALLABLE
+		STRING, FUNCTION, COMPLEX, CUSTOM, ANY, CONSTRUCTABLE, CALLABLE
 	}
 	
 	public TypeRepresentation(){
@@ -45,6 +45,7 @@ public class TypeRepresentation implements Serializable {
 	public static final TypeRepresentation DOUBLE = new TypeRepresentation(SystemTypes.DOUBLE);
 	public static final TypeRepresentation STRING = new TypeRepresentation(SystemTypes.STRING);
 	public static final TypeRepresentation ANY = new TypeRepresentation(SystemTypes.ANY);
+	public static final TypeRepresentation CALLABLE_OBJREF = new TypeRepresentation(SystemTypes.CALLABLE);
 	public static final TypeRepresentation NULL = new TypeRepresentation(null);
 	
 	static Map<String, TypeRepresentation> simpleTypeMap
@@ -84,6 +85,8 @@ public class TypeRepresentation implements Serializable {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result
+				+ ((callableReturn == null) ? 0 : callableReturn.hashCode());
+		result = prime * result
 				+ ((fqTypeName == null) ? 0 : fqTypeName.hashCode());
 		result = prime * result
 				+ ((generics == null) ? 0 : generics.hashCode());
@@ -102,6 +105,11 @@ public class TypeRepresentation implements Serializable {
 		if (getClass() != obj.getClass())
 			return false;
 		TypeRepresentation other = (TypeRepresentation) obj;
+		if (callableReturn == null) {
+			if (other.callableReturn != null)
+				return false;
+		} else if (!callableReturn.equals(other.callableReturn))
+			return false;
 		if (fqTypeName == null) {
 			if (other.fqTypeName != null)
 				return false;
@@ -121,7 +129,7 @@ public class TypeRepresentation implements Serializable {
 			return false;
 		return true;
 	}
-	
+
 	@Override
 	public String toString() {
 		return "TypeRepresentation [type=" + type + ", simpleType="
@@ -166,23 +174,15 @@ public class TypeRepresentation implements Serializable {
 	 * @return jvm version
 	 */
 	public String toJVMTypeString(){
-		if (type == SystemTypes.JRAWTYPE)
+		if (type == SystemTypes.CONSTRUCTABLE)
 			return "L" + getFqTypeName() + ";";
 		if (type == SystemTypes.CALLABLE)
 			return "L" + getFqTypeName() + ";";
 		
 		if (isCustomType()){
-			String[] components = StringUtils.split(fqTypeName, ".");
-			String typename = components[components.length-1];
-			String moduleName = components[components.length-2];
-			List<String> sl = new ArrayList<String>();
-			for (int i=0; i<components.length-2; i++){
-				sl.add(components[i]);
-			}
-			String pp = sl.size() == 0 ? "" : StringUtils.join(sl, "/");
-			return "L" + (pp.equals("") ? "" : pp + "/") + 
-					Utils.asModuledefJavaName(moduleName) + "$" + 
-					Utils.asTypedefJavaName(typename) + ";";
+			return "L" +
+				Utils.asComplexType(fqTypeName, BuildPath.getBuildPath().isTypedef(fqTypeName))
+				+";";
 		}
 		
 		if (isComplexType())
@@ -276,7 +276,7 @@ public class TypeRepresentation implements Serializable {
 			return "int";
 		case LONG:
 			return "long";
-		case JRAWTYPE:
+		case CONSTRUCTABLE:
 			return "Object"; // TODO instancer
 		default:
 		case STRING:
@@ -315,7 +315,7 @@ public class TypeRepresentation implements Serializable {
 			return "I";
 		case LONG:
 			return "J";
-		case JRAWTYPE:
+		case CONSTRUCTABLE:
 			return "Ljava/lang/Object;"; // TODO instancer
 		default:
 		case STRING:
@@ -360,14 +360,14 @@ public class TypeRepresentation implements Serializable {
 	}
 
 	public String toInvokerName() {
-		if (isCustomType())
+		if (isComplexType())
 			return "L" + getSimpleType().toInvokerName();
 		
-		if (isComplexType())
+		if (isCustomType())
 			return "C" + new Integer(BuildPath.getBuildPath().getTypeOrder(this)).toString();
 		
 		switch (type){
-		case JRAWTYPE:
+		case CONSTRUCTABLE:
 			return "j";
 		case ANY:
 			return "A";
@@ -388,34 +388,20 @@ public class TypeRepresentation implements Serializable {
 		case LONG:
 			return "J";
 		case CALLABLE:
-			return null; // must not happen
+			return "c";
 		default:
 		case STRING:
 			return "s";
 		}
 	}
-
-	private String moduleDinPath;
-	private String callableName;
 	
-	public void setCallableInfo(String moduleDinPath, String callableName) {
-		this.setModuleDinPath(moduleDinPath);
-		this.setCallableName(callableName);
+	public TypeRepresentation getCallableReturn() {
+		return callableReturn;
 	}
 
-	public String getModuleDinPath() {
-		return moduleDinPath;
+	public void setCallableReturn(TypeRepresentation callableReturn) {
+		this.callableReturn = callableReturn;
 	}
 
-	private void setModuleDinPath(String moduleDinPath) {
-		this.moduleDinPath = moduleDinPath;
-	}
-
-	public String getCallableName() {
-		return callableName;
-	}
-
-	private void setCallableName(String callableName) {
-		this.callableName = callableName;
-	}
+	private TypeRepresentation callableReturn;
 }

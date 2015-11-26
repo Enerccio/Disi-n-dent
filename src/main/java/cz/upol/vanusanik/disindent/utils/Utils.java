@@ -224,4 +224,42 @@ public class Utils {
 		o.add(0, context);
 		return o.toArray();
 	}
+
+	public static String asComplexType(String fqTypeName, boolean typedef) {
+		String[] split1 = splitByLastDot(fqTypeName);
+		String path = split1[0];
+		String mpath = asJavaModuleName(split1[1]);
+		if (typedef){
+			String[] split2 = splitByLastDot(fqTypeName);
+			path = split2[0];
+			mpath = asJavaModuleName(split2[1]) + "$" + asTypedefJavaName(split2[1]);
+		}
+		return slashify(path.equals("") ? mpath : path + "." + mpath);
+	}
+
+	public static String combine(String left, String right, String splitter) {
+		String[] splitLeft = StringUtils.split(left, splitter);
+		String[] splitRight = StringUtils.split(right, splitter);
+		
+		int maxTest = Math.min(splitLeft.length, splitRight.length);
+		int maxTogether = -1;
+		
+		for (int i=0; i<maxTest; i++){
+			String lcombine = splitLeft[splitLeft.length-(i+1)];
+			String rcombine = splitRight[i];
+			if (lcombine.equals(rcombine)){
+				maxTogether = i;
+			} else 
+				break;
+		}
+		
+		if (maxTogether == -1)
+			return null;
+		else {
+			List<String> combiner = new ArrayList<String>(Arrays.asList(splitLeft));
+			for (int i=maxTogether+1; i<splitRight.length; i++)
+				combiner.add(splitRight[i]);
+			return StringUtils.join(combiner, splitter);
+		}
+	}
 }

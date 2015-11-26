@@ -14,21 +14,17 @@ import java.util.TreeMap;
 import java.util.UUID;
 
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Field_declarationContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqModuleNameContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Func_argumentsContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FunctionContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Base_typeContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqtypeContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Func_declContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Funn_declContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.IdentifierContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ListContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.NativeImportContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Include_declContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ProgramContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypeContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypedefContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypepartContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Type_bodyContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Type_declContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Use_declContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.UsesContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Using_declarationContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Using_functionsContext;
 
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.commons.io.FileUtils;
@@ -160,11 +156,11 @@ public class BuildPath implements Serializable {
 	 *            module name
 	 */
 	private void addModuleToPath(File path, String name) {
-		name = FilenameUtils.getBaseName(StringUtils.capitalize(StringUtils
-				.lowerCase(name)));
+		name = FilenameUtils.getBaseName(StringUtils
+				.lowerCase(name));
 		if (!StringUtils
 				.containsOnly(name,
-						"abcdefghijklmnopqrstuvwxyz_0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")) {
+						"abcdefghijklmnopqrstuvwxyz_1234567890")) {
 			Warner.warn(new BuildPathModuleNameIncorrectException(
 					"module name has to be valid identifier"));
 			return;
@@ -212,7 +208,7 @@ public class BuildPath implements Serializable {
 		}
 			
 		if (pc.package_decl().size() == 1)
-			packagePath = pc.package_decl(1).complex_identifier().getText().replace("::", ".");
+			packagePath = pc.package_decl(0).complex_identifier().getText().replace("::", ".");
 
 		Map<String, String> imports = parseImports(pc, name, packagePath);
 
@@ -245,36 +241,27 @@ public class BuildPath implements Serializable {
 			String selfModule, String selfPackage) {
 		Map<String, String> iMap = new HashMap<String, String>();
 
-		for (Use_declContext ud : pc.using_declaration()) {
-			if (ud.using_module() != null) {
-				String fqName = ud.using_module().fqNameImport().getText();
-				String[] split = Utils.splitByLastDot(fqName);
-				iMap.put(split[1], fqName + "." + split[1]);
-			} else {
-				Using_functionsContext fc = ud.using_functions();
-				List<UsesContext> usesList = Utils.searchForElementOfType(
-						UsesContext.class, fc);
-				FqModuleNameContext fmnc = Utils
-						.searchForElementOfType(FqModuleNameContext.class, fc)
-						.iterator().next();
-
-				String moduleName = fmnc.getText();
-				for (UsesContext usc : usesList) {
-					for (IdentifierContext i : usc.identifier()) {
-						iMap.put(i.getText(), moduleName + "." + i.getText());
-					}
-				}
+		for (Use_declContext ud : pc.use_decl()) {
+			String usingIdentifier = ud.complex_identifier().getText().replace("::", ".");
+			String[] split = Utils.splitByLastDot(usingIdentifier);
+			iMap.put(split[1], usingIdentifier);
+		}
+		
+		for (Include_declContext ud : pc.include_decl()){
+			String fp = ud.complex_identifier().getText().replace("::", ".");
+			for (IdentifierContext ic : ud.include_list().identifier()){
+				String identifier = ic.getText();
+				iMap.put(identifier, fp + "." + identifier);
 			}
 		}
-
-		for (TypedefContext tc : pc.typedef()) {
-			String typedefName = tc.typedef_header().identifier().getText();
+		
+		for (Type_declContext tc : pc.type_decl()){
+			String typedefName = tc.identifier().getText();
 			String fqName = (selfPackage.equals("") ? selfModule : selfPackage
 					+ "." + selfModule)
 					+ "." + typedefName;
 			iMap.put(typedefName, fqName);
 		}
-
 		return iMap;
 	}
 
@@ -290,9 +277,9 @@ public class BuildPath implements Serializable {
 	 */
 	private void loadTypedefs(AvailableElement ae, ProgramContext pc,
 			Map<String, String> imports) {
-		for (TypedefContext tc : pc.typedef()) {
+		for (Type_declContext tc : pc.type_decl()) {
 			AvailableElement te = new AvailableElement();
-			te.elementDinName = tc.typedef_header().identifier().getText();
+			te.elementDinName = tc.identifier().getText();
 			te.elementName = ae.elementName + "$"
 					+ Utils.asTypedefJavaName(te.elementDinName);
 			te.modulePackage = ae.modulePackage;
@@ -308,12 +295,11 @@ public class BuildPath implements Serializable {
 			registerType(typedefType);
 			
 			TypeRepresentation typedefConstructorType = new TypeRepresentation();
-			typedefConstructorType.setType(SystemTypes.JRAWTYPE);
+			typedefConstructorType.setType(SystemTypes.CONSTRUCTABLE);
 			typedefConstructorType.setFqTypeName(ae.slashPackage + "/" + te.elementName + "$Constructor");
 			registerType(typedefConstructorType);
 			
 			loadTypedef(te, tc, imports);
-			
 
 			availableElements.put(ae.slashPackage.equals("") ? te.elementName
 					: ae.slashPackage + "/" + te.elementName, ae);
@@ -341,21 +327,14 @@ public class BuildPath implements Serializable {
 	 * @param imports
 	 *            list of imports
 	 */
-	private void loadTypedef(AvailableElement te, TypedefContext tc,
+	private void loadTypedef(AvailableElement te, Type_declContext tc,
 			Map<String, String> imports) {
-		for (Field_declarationContext fc : tc.typedef_body()
-				.field_declaration()) {
-			String fieldName = fc.identifier().getText();
-			TypeContext typec = fc.type();
-			TypepartContext typepc = typec.typepart();
+		for (Type_bodyContext tb : tc.type_body()) {
+			FqtypeContext fqtc = tb.fqtype();
+			
+			String fieldName = fqtc.identifier().getText();
 
-			String tt;
-			if (typepc.fqName() != null)
-				tt = typepc.fqName().getText();
-			else
-				tt = typepc.getText();
-
-			TypeRepresentation type = asType(tt, typec, imports, te.module);
+			TypeRepresentation type = asType(fqtc.type(), imports, te.module);
 
 			te.fieldSignatures.addField(fieldName, type);
 		}
@@ -374,53 +353,45 @@ public class BuildPath implements Serializable {
 	 *            module element to be validated if type exists or not
 	 * @return
 	 */
-	private TypeRepresentation asType(String tt, TypeContext fc,
+	private TypeRepresentation asType(TypeContext tc,
 			Map<String, String> imports, AvailableElement mae) {
 		TypeRepresentation tr = null;
-
-		tr = TypeRepresentation.asSimpleType(tt);
-		if (tr == null) {
-			if (fc.typepart().generic_type() != null){
-				tr = new TypeRepresentation();
-				tr.setType(SystemTypes.FUNCTION);
-				for (TypeContext tc : fc.typepart().generic_type().type()){
-					TypepartContext typepc = tc.typepart();
-					String tt2;
-					if (typepc.fqName() != null)
-						tt2 = typepc.fqName().getText();
-					else
-						tt2 = typepc.getText();
-					tr.addGenerics(asType(tt2, tc, imports, mae));
-				}
-			}
+		Base_typeContext base = tc.base_type();
+		
+		if (base.simple_type() != null){
+			tr = TypeRepresentation.asSimpleType(base.simple_type().getText());
+		} else if (base.constructor() != null){
+			tr = new TypeRepresentation();
+			tr.setType(SystemTypes.CONSTRUCTABLE);
 			
-			if (fc.typepart().constructor_type() != null){
-				tr = new TypeRepresentation();
-				tr.setType(SystemTypes.JRAWTYPE);
-				TypeContext tc = fc.typepart().constructor_type().type();
-				TypepartContext typepc = tc.typepart();
-				String tt2;
-				if (typepc.fqName() != null)
-					tt2 = typepc.fqName().getText();
-				else
-					tt2 = typepc.getText();
-				tr.setSimpleType(asType(tt2, fc, imports, mae));
-			}
+			String innerType = base.constructor().complex_identifier().getText();
+			String fqInnerType = asFqType(innerType, imports);
 			
-			if (tr == null){	
-				String fqPath = imports.get(tt);
-				if (fqPath == null)
-					fqPath = tt;
-	
-				tr = new TypeRepresentation();
-				tr.setType(SystemTypes.CUSTOM);
-				tr.setFqTypeName(fqPath);
-				validatorSet.add(new TypeValidator(mae, tr));
+			TypeRepresentation constType = new TypeRepresentation();
+			constType.setType(SystemTypes.CUSTOM);
+			constType.setFqTypeName(fqInnerType);
+			
+			validatorSet.add(new TypeValidator(mae, constType));
+			
+			tr.setSimpleType(constType);
+		} else if (base.function_type() != null){
+			tr = new TypeRepresentation();
+			tr.setType(SystemTypes.FUNCTION);
+			for (TypeContext innerType : base.function_type().type()){
+				tr.addGenerics(asType(innerType, imports, mae));
 			}
+		} else {
+			String type = base.complex_identifier().getText().replace("::", ".");
+			String fqType = asFqType(type, imports);
+			
+			tr = new TypeRepresentation();
+			tr.setType(SystemTypes.CUSTOM);
+			tr.setFqTypeName(fqType);
+			
+			validatorSet.add(new TypeValidator(mae, tr));
 		}
-
-		for (@SuppressWarnings("unused")
-		ListContext lc : fc.list()) {
+		
+		for (int i=0; i<tc.multiplier().size(); i++){
 			TypeRepresentation oldr = tr;
 			tr = new TypeRepresentation();
 			tr.setType(SystemTypes.COMPLEX);
@@ -428,6 +399,22 @@ public class BuildPath implements Serializable {
 		}
 
 		return tr;
+	}
+
+	private String asFqType(String type, Map<String, String> imports) {
+		String fqType = imports.get(type);
+		if (fqType == null){
+			for (String ikey : imports.keySet()){
+				String ivalue = imports.get(ikey);
+				String combination = Utils.combine(ivalue, type, ".");
+				if (combination != null){
+					fqType = combination; break;
+				}
+			}
+			if (fqType == null)
+				fqType = type;
+		}
+		return fqType;
 	}
 
 	/**
@@ -443,12 +430,12 @@ public class BuildPath implements Serializable {
 			Map<String, String> imports) {
 		int itc = 0;
 		
-		for (NativeImportContext nic : pc.nativeImport()) {
-			loadFunctionOrNative(nic, ae, imports, itc++);
+		for (Funn_declContext ndc : pc.funn_decl()) {
+			loadFunctionOrNative(ndc, ae, imports, itc++);
 		}
 		
-		for (FunctionContext fc : pc.function()) {
-			loadFunctionOrNative(fc, ae, imports, itc++);
+		for (Func_declContext fdc : pc.func_decl()) {
+			loadFunctionOrNative(fdc, ae, imports, itc++);
 		}
 	}
 
@@ -462,36 +449,14 @@ public class BuildPath implements Serializable {
 	 */
 	private void loadFunctionOrNative(ParseTree p, AvailableElement ae,
 			Map<String, String> imports, int itc) {
-		TypeContext returnContext = Utils.searchForElementOfType(
-				TypeContext.class, p).get(0);
-		IdentifierContext name = Utils.searchForElementOfType(
-				IdentifierContext.class, p).get(0);
-		Func_argumentsContext args = Utils.searchForElementOfType(
-				Func_argumentsContext.class, p).get(0);
+		List<FqtypeContext> fqType = Utils.searchForElementOfType(FqtypeContext.class, p);
+		FqtypeContext retHead = fqType.get(0);
 
-		String baseName = name.getText();
-		
-		List<TypeContext> types = new ArrayList<TypeContext>();
-
-		types.add(returnContext);
-		
-		for (TypeContext t : Utils.searchForElementOfType(TypeContext.class,
-				args)) {
-			types.add(t);
-		}
-
+		String baseName = retHead.identifier().getText();
 		List<TypeRepresentation> trl = new ArrayList<TypeRepresentation>();
-		for (TypeContext t : types) {
-			
-			TypepartContext typepc = t.typepart();
-
-			String tt;
-			if (typepc.fqName() != null)
-				tt = typepc.fqName().getText();
-			else
-				tt = typepc.getText();
-
-			trl.add(asType(tt, t, imports, ae));
+		
+		for (FqtypeContext fqtc : fqType) {
+			trl.add(asType(fqtc.type(), imports, ae));
 		}
 
 		ae.functionSignatures.addFunction(baseName, trl);
@@ -606,9 +571,13 @@ public class BuildPath implements Serializable {
 	}
 
 	public boolean isTypedef(String typePath, String element) {
-		AvailableElement ae = bpElements.get(typePath + "." + element);
+		return isTypedef(typePath + "." + element);
+	}
+	
+	public boolean isTypedef(String fq) {	
+		AvailableElement ae = bpElements.get(fq);
 		if (ae != null){
-			return true;
+			return ae.isTypedef;
 		}
 		return false;
 	}

@@ -13,11 +13,11 @@ EOF
 ;
 
 package_decl:
-	'(package' complex_identifier? ')'
+	'(package' complex_identifier ')'
 ;
 
 native_decl:
-	'(native' complex_identifier? ')'
+	'(native' complex_identifier ')'
 ;
 
 use_decl:
@@ -25,7 +25,7 @@ use_decl:
 ;
 
 include_decl:
-	'(include' ('*' | include_list) 'from' complex_identifier ')'
+	'(include' include_list 'from' complex_identifier ')'
 ;
 
 include_list:
@@ -45,7 +45,7 @@ formal_params:
 ;
 
 type_decl:
-	'(det' identifier type_body+ ')'
+	'(deft' identifier type_body+ ')'
 ;
 
 type_body:
@@ -119,7 +119,7 @@ const_arg:
 
 make:
 	'(make' (type | '(' type expression ')' )
-		make_body? ')'
+		make_body* ')'
 ;
 
 make_body:
@@ -139,6 +139,13 @@ multiplier:
 ;
 
 base_type:
+	  simple_type					 
+	| complex_identifier 
+	| constructor		 
+	| function_type		 
+;
+
+simple_type:
 	  'bool'
 	| 'byte'
 	| 'short'
@@ -146,10 +153,9 @@ base_type:
 	| 'long'
 	| 'float'
 	| 'double'
-	| complex_identifier
-	| constructor
-	| function_type
-;
+	| 'string'
+	| 'callable'
+	;
 
 constructor:
 	'<' complex_identifier '>'

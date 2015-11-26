@@ -1,0 +1,9 @@
+(use me::enerccio::test::test2)
+
+(defn foo->int [a->int b->int]
+	(+ a b))
+	
+(defn foo2->test2::foobar [a->string b->test2::foobar]
+	(make (test2::foobar b) 
+		(x 10)
+		(y a)))
