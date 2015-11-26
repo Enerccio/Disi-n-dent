@@ -25,6 +25,7 @@ import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ProgramCont
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypeContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypedefContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypepartContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Use_declContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.UsesContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Using_declarationContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Using_functionsContext;
@@ -206,8 +207,12 @@ public class BuildPath implements Serializable {
 		ProgramContext pc = p.program();
 		String packagePath = "";
 
-		if (pc.package_declaration() != null)
-			packagePath = pc.package_declaration().javaName().getText();
+		if (pc.package_decl().size() > 1){
+			throw new BuildPathException("multiple package declarations in one file");
+		}
+			
+		if (pc.package_decl().size() == 1)
+			packagePath = pc.package_decl(1).complex_identifier().getText().replace("::", ".");
 
 		Map<String, String> imports = parseImports(pc, name, packagePath);
 
@@ -240,7 +245,7 @@ public class BuildPath implements Serializable {
 			String selfModule, String selfPackage) {
 		Map<String, String> iMap = new HashMap<String, String>();
 
-		for (Using_declarationContext ud : pc.using_declaration()) {
+		for (Use_declContext ud : pc.using_declaration()) {
 			if (ud.using_module() != null) {
 				String fqName = ud.using_module().fqNameImport().getText();
 				String[] split = Utils.splitByLastDot(fqName);

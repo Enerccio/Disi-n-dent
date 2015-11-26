@@ -1,22 +1,28 @@
-use Math
-use Test2.holder
+(package me::enerccio::pack)
+(native qux::bar)
 
-double foo(ca is int, cb is int)
-	call exec with 
-		ca
-		cb
+(use test)
+(include * from bar)
+(include (xbar xbaz xfoo) from qux)
 
-double exec(ca is int, cb is int)
-	for avg x is int, 0, <(x, ca), +(x, 1)
-		for avg y is int, 0, <(y, cb), +(y, 1)
-			foo2(use (x) as double, use (y) as double)
+(det fncf
+	x->int
+	y->int
+	(k->long (+ x y)))
 
-double foo2(a is double, b is double)
-	call + with
-		Math.hypot(a, b)
-		call * with
-			+(a, a, a, a)
-			+(b, b, b, b)
-		call + with
-			*(a, a, a, a)
-			*(b, b, b, b)
+(def foo->fncf [a->test::type b->(int <- long int)]
+	(-> (anca <-)
+		(b a:x a:k (foo2 a):y))) 
+
+(def foo1->int [] 5)
+
+(defn foo2->fncb [m->bool])
+
+(def foo3->double [a->int b->int]
+	(fnc->long [x->double z->long]
+		(if (= x 0)
+			(for ((avg q->int) 0 (< q a) (+ q 2))
+					(bar z b)
+					(->int 
+						(* x q))))))
+	
