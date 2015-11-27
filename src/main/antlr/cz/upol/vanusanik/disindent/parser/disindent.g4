@@ -75,11 +75,11 @@ if_expression:
 ;
 
 for_expression:
-	'(' 'for' '(' '(' identifier? fqtype ')' expression expression expression ')' block ')'
+	'(' 'for' '(' '(' var? fqtype ')' expression expression expression ')' block ')'
 ;
 
 forlist_expression:
-	'(' 'foreach' '(' '(' identifier? fqtype ')' expression ')' block ')'
+	'(' 'foreach' '(' '(' var? fqtype ')' expression ')' block ')'
 ;
 
 lambda_expression:
@@ -87,17 +87,39 @@ lambda_expression:
 ;
 
 expression:
-	  complex_expression			#complexexpr
-	| type_expression				#typeexpr
-	| math_expression				#mathexpr
-	| '(' expression+ ')'			#funcallexpr
-	| expression ':' identifier     #accessorexpr
-	| identifier					#varexpr
-	| const_arg						#constargexpr
-	| make							#makeexpr
-	| const_list 					#listexpr
-	| compiler_expression			#compilerexpr
+	  complex_expression				#complexexpr
+	| type_expression					#typeexpr
+	| math_expression					#mathexpr
+	| '(' expression+ ')'				#funcallexpr
+	| expression ':' identifier   		#accessorexpr
+	| var								#varexpr
+	| const_arg							#constargexpr
+	| make								#makeexpr
+	| const_list 						#listexpr
+	| compiler_expression				#compilerexpr
+	| macro complex_expression			#complexexpr
+	| macro type_expression				#typeexpr
+	| macro math_expression				#mathexpr
+	| macro '(' expression+ ')'			#funcallexpr
+	| macro expression ':' identifier   #accessorexpr
+	| macro var							#varexpr
+	| macro const_arg					#constargexpr
+	| macro make						#makeexpr
+	| macro const_list 					#listexpr
+	| macro compiler_expression			#compilerexpr
 ;
+
+macro:
+	'@'
+	;
+	
+var:
+	inhibited? identifier
+	;
+	
+inhibited:
+	'~'
+	;
 
 type_expression:
 	'(->' type expression ')'
