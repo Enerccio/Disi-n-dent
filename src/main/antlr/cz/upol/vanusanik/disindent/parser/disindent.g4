@@ -9,6 +9,8 @@ program:
 	| func_decl
 	| funn_decl
 	| type_decl
+	| define_compiler_constant
+	| include_compiler_constants
 	)*
 EOF
 ;
@@ -58,12 +60,13 @@ type_body:
 ;
 
 block:
-	expression*
+	block_compiler_directive? expression*
 ;
 
 complex_expression:
 	  if_expression
 	| for_expression
+	| forlist_expression
 	| lambda_expression
 ;
 
@@ -75,19 +78,25 @@ for_expression:
 	'(' 'for' '(' '(' identifier? fqtype ')' expression expression expression ')' block ')'
 ;
 
+forlist_expression:
+	'(' 'foreach' '(' '(' identifier? fqtype ')' expression ')' block ')'
+;
+
 lambda_expression:
 	'(' 'fnc' '->' type '[' formal_params? ']' block ')'
 ;
 
 expression:
-	  complex_expression			#complexexp
-	| type_expression				#typeexp
-	| math_expression				#mathexp
-	| '(' expression+ ')'			#funcallexp
-	| expression ':' identifier     #accessorexp
-	| identifier					#varexp
-	| const_arg						#constargexp
-	| const_list 					#listexp
+	  complex_expression			#complexexpr
+	| type_expression				#typeexpr
+	| math_expression				#mathexpr
+	| '(' expression+ ')'			#funcallexpr
+	| expression ':' identifier     #accessorexpr
+	| identifier					#varexpr
+	| const_arg						#constargexpr
+	| make							#makeexpr
+	| const_list 					#listexpr
+	| compiler_expression			#compilerexpr
 ;
 
 type_expression:
@@ -116,11 +125,39 @@ const_arg:
 	| DoubleConstant
 	| FloatConstant
 	| String
-	| make
 	| 'none'
 	| 'true'
 	| 'false'
 ;
+
+define_compiler_constant:
+	'(' 'define-compiler-constant' identifier const_arg ')'
+	;
+	
+include_compiler_constants:
+	'(' 'constant' 'import' 'from' complex_identifier ')'
+	;
+
+directive_expression:
+	const_arg | identifier
+	;
+	
+cdirective_head:
+	  'compiler-directive'
+	| '#'
+	;
+
+// available compiler directives
+	//
+	//
+
+block_compiler_directive:
+	'(' cdirective_head directive_expression+ ')'
+	;
+
+compiler_expression:
+	'(' cdirective_head directive_expression+ block ')'
+	;
 
 make:
 	'(make' (type | '(' type expression ')' )
