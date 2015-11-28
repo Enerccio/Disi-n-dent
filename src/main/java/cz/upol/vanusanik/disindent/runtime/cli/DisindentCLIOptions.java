@@ -37,5 +37,8 @@ public class DisindentCLIOptions {
 
 	@Parameter(required = false, names = { "-ksp", "--keystore-password" }, description = "Keystore password for SSL conecction.")
 	public String keystorepass;
+	
+	@Parameter(required = false, names = { "-I" }, description = "Initially defined compiler arguments")
+	public String compilerArgs;
 
 }

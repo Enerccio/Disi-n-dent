@@ -1,5 +1,5 @@
 (use me::enerccio::test::test2)
-(use me::enerccio::test::test2::bartable)
+(include (bartable foobaz) from me::enerccio::test::test2)
 
 (defn foo->int [a->int b->int]
 	(+ a b))
@@ -9,4 +9,4 @@
 		(x 10)
 		(y a)))
 		
-(defn foo3->bartable [] )
+(defn foo3->bartable [] (foobaz))

@@ -7,6 +7,7 @@ import com.beust.jcommander.JCommander;
 
 import cz.upol.vanusanik.disindent.DisindentThread;
 import cz.upol.vanusanik.disindent.buildpath.BuildPath;
+import cz.upol.vanusanik.disindent.buildpath.CompilerOptions;
 import cz.upol.vanusanik.disindent.runtime.network.NodeList;
 import cz.upol.vanusanik.disindent.runtime.types.Method;
 import cz.upol.vanusanik.disindent.utils.Utils;
@@ -31,7 +32,7 @@ public class DisindentCLI {
 		DisindentCLIOptions no = new DisindentCLIOptions();
 		new JCommander(no, args);
 
-		Warner.setWarnLevel(WarnLevel.ERROR);
+		Warner.setWarnLevel(WarnLevel.WARN_VERBOSE);
 		run(no);
 	}
 
@@ -46,7 +47,7 @@ public class DisindentCLI {
 		NodeList.setUseSSL(no.useSSL);
 
 		File workingDir = no.sourcesDirectory;
-		DisindentThread.simpleStart(workingDir.getAbsolutePath());
+		DisindentThread.simpleStart(CompilerOptions.compileInitialArgs(no.compilerArgs), workingDir.getAbsolutePath());
 
 		String execFunc = no.main.get(0).replace("::", ".");
 

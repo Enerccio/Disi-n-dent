@@ -16,7 +16,7 @@ import cz.upol.vanusanik.disindent.errors.CompilationException;
  * @author Peter Vanusanik
  *
  */
-public class FunctionContext {
+public class ScopeContext {
 	
 	public static class FunctionBlock {
 		private int ordering = 0;
@@ -42,7 +42,7 @@ public class FunctionContext {
 	
 	private List<FunctionBlock> ctxStack = new ArrayList<FunctionBlock>();
 	
-	public FunctionContext(){
+	public ScopeContext(){
 		
 	}
 	

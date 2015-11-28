@@ -9,6 +9,8 @@ import java.util.Queue;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.commons.lang3.StringUtils;
 
+import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation;
+import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation.SystemTypes;
 import cz.upol.vanusanik.disindent.errors.CompilationException;
 
 /**
@@ -211,7 +213,7 @@ public class Utils {
 	}
 
 	public static boolean disindentClass(String name) {
-		String[] split = StringUtils.split(name, "/");
+		String[] split = StringUtils.split(name, ".");
 		return split[split.length-1].startsWith("$dv$") || split[split.length-1].startsWith("$di$");
 	}
 
@@ -270,5 +272,16 @@ public class Utils {
 			if (!e.equals(""))
 				filter.add(StringUtils.capitalize(e));
 		return StringUtils.join(filter, "");
+	}
+
+	public static TypeRepresentation asFunctionType(
+			List<TypeRepresentation> trl) {
+		TypeRepresentation tr = new TypeRepresentation();
+		tr.setType(SystemTypes.FUNCTION);
+		
+		for (TypeRepresentation t : trl)
+			tr.addGenerics(t);
+		
+		return tr;
 	}
 }

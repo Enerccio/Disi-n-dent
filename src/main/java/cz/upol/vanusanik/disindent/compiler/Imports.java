@@ -1,79 +1,58 @@
 package cz.upol.vanusanik.disindent.compiler;
 
-import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.lang3.StringUtils;
-
-import cz.upol.vanusanik.disindent.buildpath.BuildPath;
-import cz.upol.vanusanik.disindent.buildpath.FunctionSignatures;
-import cz.upol.vanusanik.disindent.errors.MalformedImportDeclarationException;
 import cz.upol.vanusanik.disindent.utils.Utils;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.IdentifierContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Include_declContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Native_typeContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ProgramContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Type_declContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Use_declContext;
 
 /**
  * Currently used imports. Used during compilation to resolve 
  * @author Peter Vanusanik
  *
  */
-public class Imports implements Serializable {
-	private static final long serialVersionUID = -453373772681489736L;
-
-	/** Stores original names of the paths */
-	Map<String, String> importMapOriginal
-		= new HashMap<String, String>();
-
+public class Imports {
 	
-	/**
-	 * Adds din name to slash path resolve
-	 * @param slashPath
-	 * @param dinName
-	 * @param originalPath
-	 */
-	public void add(String dinName, String originalPath){
-		importMapOriginal.put(dinName, originalPath);
-	}
+	public static Map<String, String> parseImports(ProgramContext pc,
+			String selfModule, String selfPackage) {
+		Map<String, String> iMap = new HashMap<String, String>();
 
-	public void add(String packageDeclaration, String moduleName, String typedef, String searchDef){
-		add(searchDef, (packageDeclaration.equals("") ? "" : packageDeclaration + ".") + moduleName + "." + typedef);
-	}
-	
-	/**
-	 * Tries to parse import string into actual imports
-	 * @param fullImport import string
-	 */
-	public void addImport(String fullImport, boolean system){
-		String[] components = Utils.splitByLastDot(fullImport);
-		addImport(components[0], components[1], system);
-	}
-
-	/**
-	 * Adds the unknown element to either functions of typedefs
-	 * @param parentPath
-	 * @param object
-	 */
-	public void addImport(String parentPath, String object, boolean system) {
-		String[] components = Utils.splitByLastDot(parentPath);
-		String packagePath = components[0];
-		String moduleName = components[1];
-		
-		if (StringUtils.isAllUpperCase(object.substring(0, 1))){
-			// module def, load its functions as Module.function and typedefs as Module.typedef
-			FunctionSignatures fcs = BuildPath.getBuildPath().getSignatures(parentPath, object);
-			for (String fncName : fcs.definedFunctions())
-				add(parentPath, object, fncName, system ? fncName : object + "." + fncName);
-			for (String typedef : BuildPath.getBuildPath().getTypedefs(parentPath, object))
-				add(parentPath, object, typedef, system ? typedef : object + "." + typedef);
-			return;
+		for (Use_declContext ud : pc.use_decl()) {
+			String usingIdentifier = ud.complex_identifier().getText().replace("::", ".");
+			String[] split = Utils.splitByLastDot(usingIdentifier);
+			iMap.put(split[1], usingIdentifier);
 		}
-
-		if (StringUtils.isAllLowerCase(moduleName.subSequence(0, 1)))
-			throw new MalformedImportDeclarationException("package path does not end with a module declaration");
 		
-		add(packagePath, moduleName, object, object);
+		for (Include_declContext ud : pc.include_decl()){
+			String fp = ud.complex_identifier().getText().replace("::", ".");
+			for (IdentifierContext ic : ud.include_list().identifier()){
+				String identifier = ic.getText();
+				iMap.put(identifier, fp + "." + identifier);
+			}
+		}
+		
+		for (Type_declContext tc : Utils.searchForElementOfType(Type_declContext.class, pc)){
+			String typedefName = tc.identifier().getText();
+			String fqName = (selfPackage.equals("") ? selfModule : selfPackage
+					+ "." + selfModule)
+					+ "." + typedefName;
+			iMap.put(typedefName, fqName);
+		}
+		
+		for (Native_typeContext ntc : Utils.searchForElementOfType(Native_typeContext.class, pc)){
+			String typedefName = ntc.identifier().getText();
+			String fqName = (selfPackage.equals("") ? selfModule : selfPackage
+					+ "." + selfModule)
+					+ "." + typedefName;
+			iMap.put(typedefName, fqName);
+		}
+		
+		return iMap;
 	}
-
-	public void remove(String x) {
-		importMapOriginal.remove(x);
-	}
+	
 }

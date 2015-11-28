@@ -40,4 +40,8 @@ public class FieldSignatures implements Serializable {
 	public Iterable<String> getFields() {
 		return fields.keySet();
 	}
+
+	public boolean containsField(String baseName) {
+		return fields.containsKey(baseName);
+	}
 }

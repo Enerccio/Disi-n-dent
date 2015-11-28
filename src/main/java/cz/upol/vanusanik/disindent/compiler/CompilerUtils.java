@@ -1,18 +1,19 @@
 package cz.upol.vanusanik.disindent.compiler;
 
 import java.util.List;
+import java.util.Map;
 
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ListContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Base_typeContext;
+import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Const_argContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypeContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypepartContext;
 
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation;
 import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation.SystemTypes;
-import cz.upol.vanusanik.disindent.errors.MalformedImportDeclarationException;
 import cz.upol.vanusanik.disindent.errors.TypeException;
+import cz.upol.vanusanik.disindent.utils.Utils;
 
 public class CompilerUtils implements Opcodes {
 
@@ -22,48 +23,30 @@ public class CompilerUtils implements Opcodes {
 	 * @param type
 	 * @return
 	 */
-	public static TypeRepresentation asType(TypeContext type, Imports imports) {
-		TypepartContext typepc = type.typepart();
-
-		String tt;
-		if (typepc.fqName() != null)
-			tt = typepc.fqName().getText();
-		else
-			tt = typepc.getText();
-
+	public static TypeRepresentation asType(TypeContext tc,
+			Map<String, String> imports) {
 		TypeRepresentation tr = null;
+		Base_typeContext base = tc.base_type();
 
-		tr = TypeRepresentation.asSimpleType(tt);
-		if (tr == null) {
-			if (type.typepart().generic_type() != null){
-				tr = new TypeRepresentation();
-				tr.setType(SystemTypes.FUNCTION);
-				for (TypeContext tc : type.typepart().generic_type().type()){
-					tr.addGenerics(asType(tc, imports));
-				}
+		if (base.simple_type() != null) {
+			tr = TypeRepresentation.asSimpleType(base.simple_type().getText());
+		} else if (base.function_type() != null) {
+			tr = new TypeRepresentation();
+			tr.setType(SystemTypes.FUNCTION);
+			for (TypeContext innerType : base.function_type().type()) {
+				tr.addGenerics(asType(innerType, imports));
 			}
-			
-			if (type.typepart().constructor_type() != null){
-				tr = new TypeRepresentation();
-				tr.setType(SystemTypes.JRAWTYPE);
-				TypeContext tc = type.typepart().constructor_type().type();
-				tr.setSimpleType(asType(tc, imports));
-			}
-			
-			if (tr == null){
-				String fqPath = imports.importMapOriginal.get(tt);
-				if (fqPath == null)
-					throw new MalformedImportDeclarationException("type " + tt
-							+ " is not defined");
-	
-				tr = new TypeRepresentation();
-				tr.setType(SystemTypes.CUSTOM);
-				tr.setFqTypeName(fqPath);
-			}
+		} else {
+			String type = base.complex_identifier().getText().replace("::",
+					".");
+			String fqType = asFqType(type, imports);
+
+			tr = new TypeRepresentation();
+			tr.setType(SystemTypes.CUSTOM);
+			tr.setFqTypeName(fqType);
 		}
 
-		for (@SuppressWarnings("unused")
-		ListContext lc : type.list()) {
+		for (int i = 0; i < tc.multiplier().size(); i++) {
 			TypeRepresentation oldr = tr;
 			tr = new TypeRepresentation();
 			tr.setType(SystemTypes.COMPLEX);
@@ -122,7 +105,7 @@ public class CompilerUtils implements Opcodes {
 		case ANY:
 		case COMPLEX:
 		case CUSTOM:
-		case JRAWTYPE:
+		case CONSTRUCTABLE:
 		case FUNCTION:
 		case CALLABLE:
 		case STRING:
@@ -132,7 +115,7 @@ public class CompilerUtils implements Opcodes {
 			break;
 		}
 	}
-	
+
 	/**
 	 * Adds correct type of store operation to stack based on argument type
 	 * 
@@ -163,7 +146,7 @@ public class CompilerUtils implements Opcodes {
 		case CUSTOM:
 		case FUNCTION:
 		case STRING:
-		case JRAWTYPE:
+		case CONSTRUCTABLE:
 		case CALLABLE:
 			mv.visitVarInsn(ASTORE, id);
 			break;
@@ -192,7 +175,7 @@ public class CompilerUtils implements Opcodes {
 		case CUSTOM:
 		case FUNCTION:
 		case STRING:
-		case JRAWTYPE:
+		case CONSTRUCTABLE:
 		case CALLABLE:
 			mv.visitInsn(ARETURN);
 			break;
@@ -265,7 +248,7 @@ public class CompilerUtils implements Opcodes {
 			case ANY:
 			case COMPLEX:
 			case CUSTOM:
-			case JRAWTYPE:
+			case CONSTRUCTABLE:
 			case CALLABLE:
 				break;
 
@@ -290,7 +273,8 @@ public class CompilerUtils implements Opcodes {
 					return;
 				case ANY:
 					mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-					mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "intValue", "()I", false);
+					mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number",
+							"intValue", "()I", false);
 					return;
 				default:
 					break;
@@ -313,7 +297,8 @@ public class CompilerUtils implements Opcodes {
 					return;
 				case ANY:
 					mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-					mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "doubleValue", "()D", false);
+					mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number",
+							"doubleValue", "()D", false);
 					return;
 				default:
 					break;
@@ -336,7 +321,8 @@ public class CompilerUtils implements Opcodes {
 					return;
 				case ANY:
 					mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-					mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "floatValue", "()F", false);
+					mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number",
+							"floatValue", "()F", false);
 					return;
 				default:
 					break;
@@ -360,7 +346,8 @@ public class CompilerUtils implements Opcodes {
 					return;
 				case ANY:
 					mv.visitTypeInsn(CHECKCAST, "java/lang/Number");
-					mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number", "longValue", "()J", false);
+					mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Number",
+							"longValue", "()J", false);
 					return;
 				default:
 					break;
@@ -378,9 +365,8 @@ public class CompilerUtils implements Opcodes {
 			}
 		}
 
-		throw new TypeException(
-				"Types are incogruent for cast or implied cast " + tr + " to "
-						+ as);
+		throw new TypeException("Types are incogruent for cast or implied cast "
+				+ tr + " to " + as);
 	}
 
 	/**
@@ -392,8 +378,7 @@ public class CompilerUtils implements Opcodes {
 	 * @return
 	 */
 	public static boolean congruentType(MethodVisitor mv,
-			TypeRepresentation test,
-			TypeRepresentation requiredType) {
+			TypeRepresentation test, TypeRepresentation requiredType) {
 		if (test == TypeRepresentation.NULL) {
 			if (requiredType.isComplexType() || requiredType.isCustomType()
 					|| requiredType.getType() == SystemTypes.ANY
@@ -404,9 +389,9 @@ public class CompilerUtils implements Opcodes {
 		boolean eqType = test.equals(requiredType);
 		if (eqType)
 			return true;
-		
-		if (requiredType == TypeRepresentation.LONG){
-			switch (test.getType()){
+
+		if (requiredType == TypeRepresentation.LONG) {
+			switch (test.getType()) {
 			case BOOL:
 			case BYTE:
 			case INT:
@@ -415,26 +400,27 @@ public class CompilerUtils implements Opcodes {
 				return true;
 			default:
 				break;
-			
+
 			}
 		}
-		
-		if (requiredType == TypeRepresentation.DOUBLE){
-			switch (test.getType()){
+
+		if (requiredType == TypeRepresentation.DOUBLE) {
+			switch (test.getType()) {
 			case FLOAT:
-				
+
 				return true;
 			default:
 				break;
-			
+
 			}
 		}
-		
+
 		return false;
 	}
 
 	/**
 	 * Default value for type
+	 * 
 	 * @param mv
 	 * @param type
 	 */
@@ -442,12 +428,12 @@ public class CompilerUtils implements Opcodes {
 		if (type.isComplexType() || type.isCustomType()
 				|| type.getType() == SystemTypes.ANY
 				|| type.getType() == SystemTypes.FUNCTION
-				|| type.getType() == SystemTypes.STRING){
+				|| type.getType() == SystemTypes.STRING) {
 			mv.visitInsn(ACONST_NULL);
 			return;
 		}
-		
-		switch (type.getType()){
+
+		switch (type.getType()) {
 		case BOOL:
 			mv.visitInsn(ICONST_0);
 			break;
@@ -481,23 +467,129 @@ public class CompilerUtils implements Opcodes {
 
 	/**
 	 * Returns jump type for operation, this jump type must jump when true
+	 * 
 	 * @param operation
 	 * @return
 	 */
 	public static int cmpChoice(String operation) {
-		switch (operation){
-		case "=" : return IF_ICMPEQ;
-		case "<>": return IF_ICMPNE;
-		case ">": return IF_ICMPGT;
-		case "<": return IF_ICMPLT;
-		case ">=": return IF_ICMPLE;
-		case "<=": return IF_ICMPGE;
+		switch (operation) {
+		case "=":
+			return IF_ICMPEQ;
+		case "<>":
+			return IF_ICMPNE;
+		case ">":
+			return IF_ICMPGT;
+		case "<":
+			return IF_ICMPLT;
+		case ">=":
+			return IF_ICMPLE;
+		case "<=":
+			return IF_ICMPGE;
 		}
 		return 0;
 	}
 
 	public static void addFieldLoad(MethodVisitor mv, String accessor,
 			TypeRepresentation varType, TypeRepresentation contextType) {
-		mv.visitFieldInsn(GETFIELD, contextType.toJVMTypeString().substring(1, contextType.toJVMTypeString().length()-1), accessor, varType.toJVMTypeString());
+		mv.visitFieldInsn(GETFIELD,
+				contextType.toJVMTypeString().substring(1,
+						contextType.toJVMTypeString().length() - 1),
+				accessor, varType.toJVMTypeString());
+	}
+
+	public static Object asValue(Const_argContext c) {
+		if (c.getText().equals("none")) {
+			return null;
+		}
+
+		if (c.getText().equals("true")) {
+			return Boolean.TRUE;
+		}
+
+		if (c.getText().equals("false")) {
+			return Boolean.FALSE;
+		}
+
+		if (c.IntegerConstant() != null) {
+			// integer
+			String text = c.getText();
+
+			int iv;
+			if (text.length() == 1)
+				iv = Integer.parseInt(text);
+			else if (text.charAt(0) == '0' && text.contains("b"))
+				iv = Integer.parseInt(text.substring(2), 2);
+			else if (text.charAt(0) == '0' && text.contains("x"))
+				iv = Integer.parseInt(text.substring(2), 16);
+			else if (text.charAt(0) == '0')
+				iv = Integer.parseInt(text.substring(1), 8);
+			else
+				iv = Integer.parseInt(text);
+
+			return iv;
+		}
+
+		if (c.LongConstant() != null) {
+			// long
+			String text = c.getText();
+			text = text.substring(0, text.length() - 1);
+
+			long lv;
+			if (text.length() == 1)
+				lv = Long.parseLong(text);
+			else if (text.charAt(0) == '0' && text.contains("b"))
+				lv = Long.parseLong(text.substring(2), 2);
+			else if (text.charAt(0) == '0' && text.contains("x"))
+				lv = Long.parseLong(text.substring(2), 16);
+			else if (text.charAt(0) == '0')
+				lv = Long.parseLong(text.substring(1), 8);
+			else
+				lv = Long.parseLong(text);
+
+			return lv;
+		}
+
+		if (c.DoubleConstant() != null) {
+			// double
+			String text = c.getText();
+			double dv = Double.parseDouble(text);
+			return dv;
+		}
+
+		if (c.FloatConstant() != null) {
+			// float
+			String text = c.getText();
+			text = text.substring(0, text.length() - 1);
+			float fv = Float.parseFloat(text);
+			return fv;
+		}
+
+		if (c.String() != null) {
+			// string
+			String strValue = c.getText();
+			strValue = Utils.removeEscapes(strValue);
+			strValue = strValue.substring(1, strValue.length() - 1);
+			return strValue;
+		}
+
+		return null;
+	}
+
+	public static String asFqType(String type, Map<String, String> imports) {
+		String fqType = imports.get(type);
+		if (fqType == null) {
+			for (String ikey : imports.keySet()) {
+				String ivalue = imports.get(ikey);
+				String combination = Utils.combine(ivalue, type, ".");
+				if (combination != null) {
+					fqType = combination;
+					break;
+				}
+			}
+			if (fqType == null)
+				fqType = type;
+		}
+		return fqType;
+
 	}
 }

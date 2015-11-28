@@ -3,6 +3,7 @@ package cz.upol.vanusanik.disindent;
 import java.io.File;
 
 import cz.upol.vanusanik.disindent.buildpath.BuildPath;
+import cz.upol.vanusanik.disindent.buildpath.CompilerOptions;
 
 /**
  * Operations for enabling disindent for thread, mainly deals with build path, see also BuildPath
@@ -14,8 +15,9 @@ public class DisindentThread {
 	/**
 	 * Initializes Disindent for this thread
 	 */
-	public static void startInitialization(){
-		BuildPath.getBuildPath();
+	public static void startInitialization(CompilerOptions compilerOptions){
+		BuildPath bp = BuildPath.getBuildPath();
+		bp.setGlobalOptions(compilerOptions);
 	}
 	
 	/**
@@ -46,8 +48,8 @@ public class DisindentThread {
 	 * Initializes Disindent for this thread 
 	 * @param bp - list of paths used for Disindent build path
 	 */
-	public static void simpleStart(String... bp){
-		startInitialization();
+	public static void simpleStart(CompilerOptions compilerOptions, String... bp){
+		startInitialization(compilerOptions);
 		for (String path : bp)
 			addBuildPathPath(path);
 		finalizeInitialization();

@@ -3,7 +3,6 @@
 
 (native type bartable)
 
-(deft foobar
-	x->int
-	y->string
-	(z->long 34l))
+(deft foobar x->int y->string z->long)
+	
+(defn foobaz->bartable [])

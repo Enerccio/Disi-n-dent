@@ -2,6 +2,7 @@ package cz.upol.vanusanik.disindent.buildpath;
 
 import java.io.Serializable;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -33,16 +34,16 @@ class AvailableElement implements Comparable<AvailableElement>, Serializable {
 	/** parent module, null for modules */
 	AvailableElement module;
 	
-	/** Fields and their signatures stored here, empty for modules */
+	/** Fields and their signatures stored here*/
 	FieldSignatures fieldSignatures = new FieldSignatures();
-	/** Functions and their signatures stored here, empty for typedefs */
-	FunctionSignatures functionSignatures = new FunctionSignatures();
 	/** Typedefs stored here, empty for typedefs */
 	Set<String> typedefs = new HashSet<String>();
 	/** Represents native path, null for typedefs */
 	String nativePath;
 	/** whether this typedef is a typedef and native or neither */
 	boolean nativeTypedef = false;
+	/** null for typedefs */
+	public Map<String, String> imports;
 	
 	@Override
 	public int compareTo(AvailableElement o) {

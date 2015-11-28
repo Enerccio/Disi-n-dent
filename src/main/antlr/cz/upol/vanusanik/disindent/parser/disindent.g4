@@ -1,19 +1,33 @@
 grammar disindent;
 
+//compiler args compiler
+compiler_args:
+	compiler_arg* EOF
+	;
+
+compiler_arg:
+	(identifier '=' const_arg) | identifier
+	;
+
+// program
 program:
 	( package_decl
 	| native_decl
-	| native_type
 	| use_decl
 	| include_decl
+	| toplevel_form
+	)*
+EOF
+;
+	
+toplevel_form:
+	  native_type
 	| func_decl
 	| funn_decl
 	| type_decl
 	| define_compiler_constant
 	| include_compiler_constants
-	)*
-EOF
-;
+	;
 
 package_decl:
 	'(' 'package' complex_identifier ')'
@@ -28,7 +42,7 @@ native_type:
 	; 
 
 use_decl:
-	'(use' complex_identifier ')'
+	'(' 'use' complex_identifier ')'
 ;
 
 include_decl:
@@ -56,7 +70,7 @@ type_decl:
 ;
 
 type_body:
-	fqtype | '(' fqtype expression ')'
+	fqtype
 ;
 
 block:
@@ -75,11 +89,11 @@ if_expression:
 ;
 
 for_expression:
-	'(' 'for' '(' '(' var? fqtype ')' expression expression expression ')' block ')'
+	'(' 'for' '(' '(' identifier? fqtype ')' expression expression expression ')' block ')'
 ;
 
 forlist_expression:
-	'(' 'foreach' '(' '(' var? fqtype ')' expression ')' block ')'
+	'(' 'foreach' '(' '(' identifier? fqtype ')' expression ')' block ')'
 ;
 
 lambda_expression:
@@ -114,7 +128,7 @@ macro:
 	;
 	
 var:
-	inhibited? identifier
+	inhibited? complex_identifier
 	;
 	
 inhibited:
@@ -205,7 +219,6 @@ multiplier:
 base_type:
 	  simple_type					 
 	| complex_identifier 
-	| constructor		 
 	| function_type		 
 ;
 
@@ -220,10 +233,6 @@ simple_type:
 	| 'string'
 	| 'callable'
 	;
-
-constructor:
-	'<' complex_identifier '>'
-;
 
 function_type:
 	'(' type '<-' type* ')'
@@ -257,13 +266,9 @@ fragment EscapeSequence:
 fragment SimpleEscapeSequence:   
 '\\' ['nrt\\]
     ;
-  
-MODULE_IDENTIFIER
-: [A-Z] ([a-z] | [0-9] | '_' | [A-Z])*
-;
 
 IDENTIFIER
- : [a-z] ([a-z] | [0-9] | '_' | [A-Z])*
+ : ([a-z] | '_') ([a-z] | [0-9] | '_' | [A-Z])*
  ;
 
 fragment Digit:
@@ -271,17 +276,17 @@ fragment Digit:
     ;
 
 IntegerConstant:
-    	DecimalConstant
-    |   OctalConstant
-    |   HexadecimalConstant
-    |   BinaryConstant
+    	DecimalConstant 'I'?
+    |   OctalConstant 'I'?
+    |   HexadecimalConstant 'I'?
+    |   BinaryConstant 'I'?
     ;
 
 LongConstant:
-    	DecimalConstant 'l'
-    |   OctalConstant 'l'
-    |   HexadecimalConstant 'l'
-    |   BinaryConstant 'l'
+    	DecimalConstant ('l' | 'L')
+    |   OctalConstant ('l' | 'L')
+    |   HexadecimalConstant ('l' | 'L')
+    |   BinaryConstant ('l' | 'L')
     ;
 
 fragment BinaryConstant:
@@ -317,13 +322,13 @@ fragment HexadecimalDigit:
    ;
 
 DoubleConstant
-    :   DecimalFloatingConstant 
-    |   HexadecimalFloatingConstant
+    :   DecimalFloatingConstant 'D'? 
+    |   HexadecimalFloatingConstant 'D'?
     ;
 
 FloatConstant
-    :   DecimalFloatingConstant 'f'
-    |   HexadecimalFloatingConstant 'f'
+    :   DecimalFloatingConstant ('f' | 'F')
+    |   HexadecimalFloatingConstant ('f' | 'F')
     ;
 
 fragment

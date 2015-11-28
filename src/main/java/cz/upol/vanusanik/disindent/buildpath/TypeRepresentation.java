@@ -26,7 +26,7 @@ public class TypeRepresentation implements Serializable {
 	public enum SystemTypes {
 		BOOL, BYTE, SHORT, INT, FLOAT, LONG, DOUBLE, 
 		STRING, FUNCTION, COMPLEX, CUSTOM, ANY, 
-		CONSTRUCTABLE, CALLABLE, NATIVE
+		CONSTRUCTABLE, CALLABLE, NATIVE, MODULE
 	}
 	
 	public TypeRepresentation(){
@@ -62,23 +62,6 @@ public class TypeRepresentation implements Serializable {
 		simpleTypeMap.put("double", DOUBLE);
 		simpleTypeMap.put("string", STRING);
 		simpleTypeMap.put("any", ANY);
-	}
-	
-	/**Type enum*/
-	private SystemTypes type;
-	/** If it is complex type, ie array, type is stored here */
-	private TypeRepresentation simpleType;
-	/** FQ type name */
-	private String fqTypeName;
-	/** Represents generics if assigned to the type */
-	private List<TypeRepresentation> generics = new ArrayList<TypeRepresentation>();
-	
-	public SystemTypes getType() {
-		return type;
-	}
-	
-	public void setType(SystemTypes type) {
-		this.type = type;
 	}
 	
 	@Override
@@ -131,6 +114,25 @@ public class TypeRepresentation implements Serializable {
 		return true;
 	}
 
+	/**Type enum*/
+	private SystemTypes type;
+	/** If it is complex type, ie array, type is stored here */
+	private TypeRepresentation simpleType;
+	/** FQ type name */
+	private String fqTypeName;
+	/** Represents generics if assigned to the type */
+	private List<TypeRepresentation> generics = new ArrayList<TypeRepresentation>();
+	
+	private TypeRepresentation callableReturn;
+	
+	public SystemTypes getType() {
+		return type;
+	}
+	
+	public void setType(SystemTypes type) {
+		this.type = type;
+	}
+	
 	@Override
 	public String toString() {
 		return "TypeRepresentation [type=" + type + ", simpleType="
@@ -178,7 +180,7 @@ public class TypeRepresentation implements Serializable {
 		if (type == SystemTypes.CONSTRUCTABLE)
 			return "L" + getFqTypeName() + ";";
 		if (type == SystemTypes.CALLABLE)
-			return "L" + getFqTypeName() + ";";
+			return "Lcz/upol/vanusanik/disindent/runtime/types/Method;";
 		
 		if (isCustomType()){
 			return "L" +
@@ -190,6 +192,7 @@ public class TypeRepresentation implements Serializable {
 			return "Lcz/upol/vanusanik/disindent/runtime/types/DList;";
 		
 		switch (type){
+		case MODULE:
 		case NATIVE:
 			return "L"+getFqTypeName()+";";
 		case ANY:
@@ -261,7 +264,7 @@ public class TypeRepresentation implements Serializable {
 		
 		switch (type){
 		case NATIVE:
-			return "Object";
+		case MODULE:
 		case ANY:
 			return "Object";
 		case BOOL:
@@ -302,7 +305,7 @@ public class TypeRepresentation implements Serializable {
 		
 		switch (type){
 		case NATIVE:
-			return "Ljava/lang/Object;";
+		case MODULE:
 		case ANY:
 			return "Ljava/lang/Object;";
 		case BOOL:
@@ -374,6 +377,8 @@ public class TypeRepresentation implements Serializable {
 			return "C" + new Integer(BuildPath.getBuildPath().getTypeOrder(this)).toString();
 		
 		switch (type){
+		case MODULE:
+			return "M" + new Integer(BuildPath.getBuildPath().getTypeOrder(this)).toString();
 		case NATIVE:
 			return "N" + new Integer(BuildPath.getBuildPath().getTypeOrder(this)).toString();
 		case CONSTRUCTABLE:
@@ -411,6 +416,4 @@ public class TypeRepresentation implements Serializable {
 	public void setCallableReturn(TypeRepresentation callableReturn) {
 		this.callableReturn = callableReturn;
 	}
-
-	private TypeRepresentation callableReturn;
 }

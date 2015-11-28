@@ -18,14 +18,11 @@ import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Base_typeCo
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.FqtypeContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Func_declContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Funn_declContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.IdentifierContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Include_declContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Native_typeContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.ProgramContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.TypeContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Type_bodyContext;
 import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Type_declContext;
-import main.antlr.cz.upol.vanusanik.disindent.parser.disindentParser.Use_declContext;
 
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.apache.commons.io.FileUtils;
@@ -33,8 +30,11 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import cz.upol.vanusanik.disindent.buildpath.TypeRepresentation.SystemTypes;
+import cz.upol.vanusanik.disindent.compiler.CompilerUtils;
+import cz.upol.vanusanik.disindent.compiler.Imports;
 import cz.upol.vanusanik.disindent.errors.BuildPathException;
 import cz.upol.vanusanik.disindent.errors.BuildPathModuleNameIncorrectException;
+import cz.upol.vanusanik.disindent.errors.TypeException;
 import cz.upol.vanusanik.disindent.parser.DataSource;
 import cz.upol.vanusanik.disindent.parser.ParserBuilder;
 import cz.upol.vanusanik.disindent.parser.SimpleDataSource;
@@ -99,6 +99,7 @@ public class BuildPath implements Serializable {
 			Runtime.class.getClassLoader());
 	private Map<String, AvailableElement> availableElements = new TreeMap<String, AvailableElement>();
 	Map<String, AvailableElement> bpElements = new TreeMap<String, AvailableElement>();
+	private CompilerOptions globalOptions = null;
 	private transient Set<Validator> validatorSet = new HashSet<Validator>();
 
 	/**
@@ -218,7 +219,7 @@ public class BuildPath implements Serializable {
 			nativePath = pc.native_decl(0).complex_identifier().getText().replace("::", ".");
 		}
 		
-		Map<String, String> imports = parseImports(pc, name, packagePath);
+		Map<String, String> imports = Imports.parseImports(pc, name, packagePath);
 
 		String slashPath = Utils.slashify(packagePath);
 		AvailableElement ae = new AvailableElement();
@@ -230,58 +231,16 @@ public class BuildPath implements Serializable {
 		ae.elementName = Utils.asModuledefJavaName(name);
 		ae.slashPackage = slashPath;
 		ae.nativePath = nativePath;
+		ae.imports = imports;
 
 		loadTypedefs(ae, pc, imports);
 		loadFunctions(ae, pc, imports);
 		loadNatives(ae, pc, imports);
 
-		availableElements.put(slashPath.equals("") ? ae.elementName : slashPath
-				+ "/" + ae.elementName, ae);
+		availableElements.put(Utils.deslashify(slashPath.equals("") ? ae.elementName : slashPath
+				+ "/" + ae.elementName), ae);
 		bpElements.put(
 				packagePath.equals("") ? name : packagePath + "." + name, ae);
-	}
-
-	/**
-	 * Parses source for imports resolving
-	 * 
-	 * @param pc
-	 * @return
-	 */
-	private Map<String, String> parseImports(ProgramContext pc,
-			String selfModule, String selfPackage) {
-		Map<String, String> iMap = new HashMap<String, String>();
-
-		for (Use_declContext ud : pc.use_decl()) {
-			String usingIdentifier = ud.complex_identifier().getText().replace("::", ".");
-			String[] split = Utils.splitByLastDot(usingIdentifier);
-			iMap.put(split[1], usingIdentifier);
-		}
-		
-		for (Include_declContext ud : pc.include_decl()){
-			String fp = ud.complex_identifier().getText().replace("::", ".");
-			for (IdentifierContext ic : ud.include_list().identifier()){
-				String identifier = ic.getText();
-				iMap.put(identifier, fp + "." + identifier);
-			}
-		}
-		
-		for (Type_declContext tc : pc.type_decl()){
-			String typedefName = tc.identifier().getText();
-			String fqName = (selfPackage.equals("") ? selfModule : selfPackage
-					+ "." + selfModule)
-					+ "." + typedefName;
-			iMap.put(typedefName, fqName);
-		}
-		
-		for (Native_typeContext ntc : pc.native_type()){
-			String typedefName = ntc.identifier().getText();
-			String fqName = (selfPackage.equals("") ? selfModule : selfPackage
-					+ "." + selfModule)
-					+ "." + typedefName;
-			iMap.put(typedefName, fqName);
-		}
-		
-		return iMap;
 	}
 
 	/**
@@ -296,7 +255,7 @@ public class BuildPath implements Serializable {
 	 */
 	private void loadTypedefs(AvailableElement ae, ProgramContext pc,
 			Map<String, String> imports) {
-		for (Type_declContext tc : pc.type_decl()) {
+		for (Type_declContext tc : Utils.searchForElementOfType(Type_declContext.class, pc)) {
 			AvailableElement te = new AvailableElement();
 			te.elementDinName = tc.identifier().getText();
 			te.elementName = ae.elementName + "$"
@@ -304,6 +263,7 @@ public class BuildPath implements Serializable {
 			te.modulePackage = ae.modulePackage;
 			te.slashPackage = ae.slashPackage;
 			te.module = ae;
+			te.isTypedef = true;
 			if (ae.typedefs.contains(te.elementDinName))
 				throw new BuildPathException("duplicate typedef name");
 			ae.typedefs.add(te.elementDinName);
@@ -320,8 +280,8 @@ public class BuildPath implements Serializable {
 			
 			loadTypedef(te, tc, imports);
 
-			availableElements.put(ae.slashPackage.equals("") ? te.elementName
-					: ae.slashPackage + "/" + te.elementName, te);
+			availableElements.put(Utils.deslashify(ae.slashPackage.equals("") ? te.elementName
+					: ae.slashPackage + "/" + te.elementName), te);
 			bpElements.put((ae.modulePackage.equals("") ? ae.elementDinName
 					: ae.modulePackage + "." + ae.elementDinName)
 					+ "."
@@ -332,7 +292,7 @@ public class BuildPath implements Serializable {
 	private void loadNatives(AvailableElement ae, ProgramContext pc,
 			Map<String, String> imports){
 		
-		for (Native_typeContext ntc : pc.native_type()) {
+		for (Native_typeContext ntc : Utils.searchForElementOfType(Native_typeContext.class, pc)) {
 			AvailableElement te = new AvailableElement();
 			te.elementDinName = ntc.identifier().getText();
 			te.elementName = Utils.camelify(te.elementDinName);
@@ -341,6 +301,7 @@ public class BuildPath implements Serializable {
 			te.module = ae;
 			te.nativePath = ae.nativePath + "/" + te.elementName;
 			te.nativeTypedef = true;
+			te.isTypedef = true;
 			if (ae.typedefs.contains(te.elementDinName))
 				throw new BuildPathException("duplicate typedef name");
 			ae.typedefs.add(te.elementDinName);
@@ -350,7 +311,6 @@ public class BuildPath implements Serializable {
 			typedefType.setFqTypeName(te.nativePath);
 			registerType(typedefType);
 			
-			availableElements.put(te.nativePath, te);
 			bpElements.put((ae.modulePackage.equals("") ? ae.elementDinName
 					: ae.modulePackage + "." + ae.elementDinName)
 					+ "."
@@ -408,20 +368,6 @@ public class BuildPath implements Serializable {
 		
 		if (base.simple_type() != null){
 			tr = TypeRepresentation.asSimpleType(base.simple_type().getText());
-		} else if (base.constructor() != null){
-			tr = new TypeRepresentation();
-			tr.setType(SystemTypes.CONSTRUCTABLE);
-			
-			String innerType = base.constructor().complex_identifier().getText();
-			String fqInnerType = asFqType(innerType, imports);
-			
-			TypeRepresentation constType = new TypeRepresentation();
-			constType.setType(SystemTypes.CUSTOM);
-			constType.setFqTypeName(fqInnerType);
-			
-			validatorSet.add(new TypeValidator(mae, constType));
-			
-			tr.setSimpleType(constType);
 		} else if (base.function_type() != null){
 			tr = new TypeRepresentation();
 			tr.setType(SystemTypes.FUNCTION);
@@ -430,7 +376,7 @@ public class BuildPath implements Serializable {
 			}
 		} else {
 			String type = base.complex_identifier().getText().replace("::", ".");
-			String fqType = asFqType(type, imports);
+			String fqType = CompilerUtils.asFqType(type, imports);
 			
 			tr = new TypeRepresentation();
 			tr.setType(SystemTypes.CUSTOM);
@@ -449,22 +395,6 @@ public class BuildPath implements Serializable {
 		return tr;
 	}
 
-	private String asFqType(String type, Map<String, String> imports) {
-		String fqType = imports.get(type);
-		if (fqType == null){
-			for (String ikey : imports.keySet()){
-				String ivalue = imports.get(ikey);
-				String combination = Utils.combine(ivalue, type, ".");
-				if (combination != null){
-					fqType = combination; break;
-				}
-			}
-			if (fqType == null)
-				fqType = type;
-		}
-		return fqType;
-	}
-
 	/**
 	 * Loads all function signatures from the module
 	 * 
@@ -475,15 +405,13 @@ public class BuildPath implements Serializable {
 	 * @param imports
 	 */
 	private void loadFunctions(AvailableElement ae, ProgramContext pc,
-			Map<String, String> imports) {
-		int itc = 0;
-		
-		for (Funn_declContext ndc : pc.funn_decl()) {
-			loadFunctionOrNative(ndc, ae, imports, itc++);
+			Map<String, String> imports) {		
+		for (Funn_declContext ndc : Utils.searchForElementOfType(Funn_declContext.class, pc)) {
+			loadFunctionOrNative(ndc, ae, imports);
 		}
 		
-		for (Func_declContext fdc : pc.func_decl()) {
-			loadFunctionOrNative(fdc, ae, imports, itc++);
+		for (Func_declContext fdc : Utils.searchForElementOfType(Func_declContext.class, pc)) {
+			loadFunctionOrNative(fdc, ae, imports);
 		}
 	}
 
@@ -496,7 +424,7 @@ public class BuildPath implements Serializable {
 	 * @param itc 
 	 */
 	private void loadFunctionOrNative(ParseTree p, AvailableElement ae,
-			Map<String, String> imports, int itc) {
+			Map<String, String> imports) {
 		List<FqtypeContext> fqType = Utils.searchForElementOfType(FqtypeContext.class, p);
 		FqtypeContext retHead = fqType.get(0);
 
@@ -506,8 +434,25 @@ public class BuildPath implements Serializable {
 		for (FqtypeContext fqtc : fqType) {
 			trl.add(asType(fqtc.type(), imports, ae));
 		}
-
-		ae.functionSignatures.addFunction(baseName, trl);
+		
+		if (ae.fieldSignatures.containsField(baseName)){
+			TypeRepresentation tr = ae.fieldSignatures.getType(baseName);
+			if (tr.getType() != SystemTypes.CALLABLE){
+				ae.valid = false;
+				throw new TypeException("Clash between name of field and name of function: " + baseName);
+			}
+			if (!tr.getCallableReturn().equals(trl.get(0))){
+				ae.valid = false;
+				throw new TypeException("Clash between return types for this function name: " + baseName);
+			}
+			tr.addGenerics(Utils.asFunctionType(trl));
+		} else {
+			TypeRepresentation tr = new TypeRepresentation();
+			tr.setType(SystemTypes.CALLABLE);
+			tr.setCallableReturn(trl.get(0));
+			tr.addGenerics(Utils.asFunctionType(trl));
+			ae.fieldSignatures.addField(baseName, tr);
+		}
 	}
 
 	/**
@@ -545,32 +490,18 @@ public class BuildPath implements Serializable {
 			v.validate(this);
 	}
 
-	public FunctionSignatures getSignatures(String packageName,
-			String moduleName) {
-		String fqName = packageName.equals("") ? moduleName : packageName + "."
-				+ moduleName;
-		return getSignaturesForName(fqName);
-	}
-	
-	public FunctionSignatures getSignaturesForName(String fqName) {
-		AvailableElement ae = bpElements.get(fqName);
-		if (ae != null)
-			return ae.functionSignatures;
-		return null;
-	}
-
 	public Set<String> getTypedefs(String packageName, String moduleName) {
 		String fqName = packageName.equals("") ? moduleName : packageName + "."
 				+ moduleName;
 		AvailableElement ae = bpElements.get(fqName);
-		if (ae != null)
+		if (ae != null && ae.valid)
 			return ae.typedefs;
 		return null;
 	}
 
 	public FieldSignatures getFieldSignatures(String fqTypeName) {
 		AvailableElement ae = bpElements.get(fqTypeName);
-		if (ae != null)
+		if (ae != null && ae.valid)
 			return ae.fieldSignatures;
 		return null;
 	}
@@ -583,7 +514,7 @@ public class BuildPath implements Serializable {
 	 */
 	public String getClassPath(String moduleName) {
 		AvailableElement ae = bpElements.get(moduleName);
-		if (ae != null)
+		if (ae != null && ae.valid)
 			return ae.slashPackage.equals("") ? ae.elementName
 					: ae.slashPackage + "/" + ae.elementName;
 		return null;
@@ -628,6 +559,14 @@ public class BuildPath implements Serializable {
 			return ae.isTypedef;
 		}
 		return false;
+	}
+
+	public CompilerOptions getGlobalOptions() {
+		return globalOptions;
+	}
+
+	public void setGlobalOptions(CompilerOptions globalOptions) {
+		this.globalOptions = globalOptions;
 	}
 
 }

@@ -1,7 +1,9 @@
 package cz.upol.vanusanik.disindent.runtime;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -46,6 +48,15 @@ public class DisindentClassLoader extends ClassLoader {
 			return Thread.currentThread().getContextClassLoader().loadClass(name);
 		}
 	}
+	
+	private static final ThreadLocal<Queue<String>> compilerQueue = new ThreadLocal<Queue<String>>(){
+
+		@Override
+		protected Queue<String> initialValue() {
+			return new LinkedList<String>();
+		}
+		
+	};
 
 	private byte[] load(String name) throws ClassNotFoundException {
 		if (caches.containsKey(name))
@@ -55,7 +66,7 @@ public class DisindentClassLoader extends ClassLoader {
 			new InvokerCompiler(this, name).compile();
 			return caches.get(name);
 		} else {
-			String[] contents = Utils.splitByLastSlash(name);
+			String[] contents = Utils.splitByLastDot(name);
 			String module = contents[1];
 			String path = contents[0];
 			
@@ -65,17 +76,25 @@ public class DisindentClassLoader extends ClassLoader {
 				exactModule = module.substring(0, idx);
 			}
 			
-			BuildPath bp = BuildPath.getBuildPath();
-			DataSource ds = bp.getClassSource((path.equals("") ? "" : path + "/") + exactModule);
+			if (compilerQueue.get().contains(exactModule))
+				throw new ClassCircularityError();
+			compilerQueue.get().add(exactModule);
 			
-			if (ds == null) // class not found
-				throw new ClassNotFoundException("Class '" + name + "' not found ");
-			
-			ParserBuilder bd = new ParserBuilder();
-			bd.setDataSource(ds);
-			new DisindentCompiler(ds.getFilename(), bd.build(), this).compile();
-			
-			return caches.get(name);
+			try {
+				BuildPath bp = BuildPath.getBuildPath();
+				DataSource ds = bp.getClassSource((path.equals("") ? "" : path + ".") + exactModule);
+				
+				if (ds == null) // class not found
+					throw new ClassNotFoundException("Class '" + name + "' not found ");
+				
+				ParserBuilder bd = new ParserBuilder();
+				bd.setDataSource(ds);
+				new DisindentCompiler(ds.getFilename(), bd.build(), this).compile();
+				
+				return caches.get(name);
+			} finally {
+				compilerQueue.get().remove();
+			}
 		}
 	}
 	
